@@ -1,0 +1,16 @@
+numpy
+gym
+pybullet
+torch
+cloudpickle
+colorama
+pyyaml
+pygit2
+tensorboardX
+tensorflow  # only used to run tensorboard
+machina-rl
+ipdb  # debugging
+
+roboschool  # may require installing some packages first
+            # Ubuntu: sudo apt-get install qtbase5-dev libqt5opengl5-dev libassimp-dev cmake patchelf
+            # OSX: brew install qt assimp cmake
