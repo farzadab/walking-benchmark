@@ -11,6 +11,7 @@ from colorama import Fore, Style
 
 from utils.argparser import ArgsFromFile
 from utils.logs import LogMaster
+from utils.envs import auto_tune_env
 
 
 from machina.algos import ppo_clip
@@ -26,15 +27,20 @@ from machina import logger
 from simple_net import PolNet, VNet, PolNetLSTM, VNetLSTM
 
 
-import cassie_pybullet_env
+import cassie_pybullet_env.envs
+import pybullet_envs
+import roboschool
 
 
 class Trainer(object):
     config_filename = 'configs.yaml'
     def __init__(self, args=None):
         if args is None:
-            args = ArgsFromFile(self.config_filename).parse()
+            args = ArgsFromFile(self.config_filename)
         self.args = args
+
+        device_name = 'cpu' if args.cuda < 0 else "cuda:{}".format(args.cuda)
+        set_device(th.device(device_name))
 
         self.num_updates = int(args.num_total_frames) // args.num_steps // args.num_processes
         self.experiment = None
@@ -57,10 +63,14 @@ class Trainer(object):
         #     self.nets.cuda()
     
     def setup_env(self):
+        if hasattr(self.args, 'env_kwargs'):
+            env_id = auto_tune_env(self.args.env, self.args.env_kwargs)
+        else:
+            env_id = self.args.env
         env = GymEnv(
-            self.args.env,
+            env_id,
             log_dir=os.path.join(self.args.log_dir, 'movie'),
-            record_video=self.args.record
+            record_video=self.args.record,
         )
         env.env.seed(self.args.seed)
         if self.args.c2d:
@@ -107,6 +117,7 @@ class Trainer(object):
     def setup_experiment(self):
         self.logger = LogMaster(self.args)
         self.logger.store_exp_data({})
+        self.args.store_configs(self.logger.log_dir)
         self.writer = self.logger.get_writer()
 
 
@@ -185,7 +196,7 @@ class Trainer(object):
 
     def load_save(self, env_name, name=None):
 
-        load_path = os.path.join(self.args.log_dir, 'models')
+        load_path = os.path.join(self.args.load_path, 'models')
 
         ext = (('_' + str(name)) if name else '') + '.pt'
 
@@ -220,9 +231,12 @@ class Trainer(object):
         done = True
 
         bullet = 'Bullet' in self.args.env
-        print(bullet)
         if bullet:
             env.render()#mode='human')
+        
+        if 'Roboschool' in self.args.env:
+            from OpenGL import GLU
+        
 
         total_reward = 0
 
@@ -242,7 +256,7 @@ class Trainer(object):
                 # env.unwrapped.camera._p = env.unwrapped._p
                 # env.unwrapped.camera_adjust()#distance=5, yaw=0)
             else:
-                env.render(mode='human')
+                env.render()#mode='human')
 
             action = self.pol((th.FloatTensor(obs) - smean) / sstd)[0].reshape(-1)
             # print(action.shape)

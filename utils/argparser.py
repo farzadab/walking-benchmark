@@ -4,6 +4,7 @@ import argparse
 import enum
 import copy
 import yaml
+import os
 
 class ArgsEnum(enum.Enum):
     REQUIRED = 1
@@ -14,19 +15,18 @@ class Args(object):
         self.args = dict()
         self.description = description
 
-        for key, default in arguments.items():
-            details = dict()
-            if key in _DEFAULT_ARGS:
-                details = copy.deepcopy(_DEFAULT_ARGS[key])
+        for key, details in _DEFAULT_ARGS.items():
+            details = copy.deepcopy(details)
 
-            details['default'] = default
+            if key in arguments:
+                details['default'] = arguments[key]
 
-            if default is ArgsEnum.REQUIRED:
-                del details['default']
-                details['required'] = True
+            # if default is ArgsEnum.REQUIRED:
+            #     del details['default']
+            #     details['required'] = True
     
             self.args[key] = details
-
+        
     def parse(self):
         parser = argparse.ArgumentParser(
             description=self.description
@@ -37,11 +37,39 @@ class Args(object):
         return parser.parse_args()
 
 
-class ArgsFromFile(Args):
+class ArgsFromFile(object):
+    configs_fname = 'configs.yaml'
     def __init__(self, filename):
+        # TODO: fix required
+        # 1. get the command-line arguments
+        cmargs = Args().parse()
+
+        # 2. load the default configs file
+        self.load_configs(filename)
+
+        # 3. load the configs file if present
+        if cmargs.load_path:
+            self.load_configs(os.path.join(cmargs.load_path, self.configs_fname))
+        
+        # 4. apply the command-line arguments
+        for k, v in vars(cmargs).items():
+            if v is not None:
+                self.__dict__[k] = v
+
+
+    def load_configs(self, filename):
         with open(filename, 'r') as cfile:
             data = yaml.load(cfile)
-        super().__init__(**data)
+        if not isinstance(data, dict):
+            raise ValueError('The config file should represent a dictionary')
+        self.__dict__.update(data)
+        
+    
+    def store_configs(self, path):
+        if path is not None:
+            with open(os.path.join(path, self.configs_fname), 'w') as cfile:
+                yaml.dump(self.__dict__, cfile)
+
 
 
 def str2bool(v):
@@ -58,7 +86,6 @@ def str2bool(v):
 _DEFAULT_ARGS = {
     # env params
     'env': {
-        'default': 'pendulum',
         'help': 'Name of the environment to use.',
     },
     'c2d': {
@@ -152,7 +179,6 @@ _DEFAULT_ARGS = {
     },
     'moving_average_tau': {
         'type': float,
-        'default': 0.05,
         'help': 'Target smoothing coefficient (τ) used for the value network',
     },
     'log_stdev': {
@@ -161,7 +187,6 @@ _DEFAULT_ARGS = {
     },
     'clip_eps': {
         'type': float,
-        'default': 0.2,
         'help': 'The epsilon value used to clip the gradients in PPO',
     },
     'mixing_ratio': {
@@ -206,7 +231,7 @@ _DEFAULT_ARGS = {
 
     # misc
     'cuda': {
-        'type': str2bool,
+        'type': int,
         'help': 'Whether to use Cuda for training or not',
     },
     'seed': {

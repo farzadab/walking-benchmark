@@ -76,7 +76,6 @@ class LogMaster(object):
                 zgit_commit_msg=repo[repo.head.target].message,
                 zgit_branch=repo.head.shorthand,
                 zrun_command=sys.executable + ' ' + ' '.join(sys.argv),
-                **vars(self.args)
             )
 
             patch = repo.diff('HEAD').patch
