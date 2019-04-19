@@ -3,6 +3,7 @@ import glob
 import copy
 import time
 import gym
+import warnings
 import multiprocessing
 import pybullet_envs
 import numpy as np
@@ -12,6 +13,7 @@ from colorama import Fore, Style
 from utils.argparser import ArgsFromFile
 from utils.logs import LogMaster
 from utils.envs import auto_tune_env
+from utils.normalization import NormalizedEnv
 
 
 from machina.algos import ppo_clip
@@ -63,7 +65,7 @@ class Trainer(object):
         #     self.nets.cuda()
     
     def setup_env(self):
-        if hasattr(self.args, 'env_kwargs'):
+        if hasattr(self.args, 'env_kwargs') and 'Roboschool' in self.args.env:
             env_id = auto_tune_env(self.args.env, self.args.env_kwargs)
         else:
             env_id = self.args.env
@@ -75,7 +77,7 @@ class Trainer(object):
         env.env.seed(self.args.seed)
         if self.args.c2d:
             env = C2DEnv(env)
-        self.env = env
+        self.env = NormalizedEnv(env)
     
     def setup_nets(self):
         ob_space = self.env.observation_space
@@ -192,6 +194,7 @@ class Trainer(object):
         return [
             'pol', 'vf',
             # 'optim_pol', 'optim_vf',
+            'env__state',
         ]
 
     def load_save(self, env_name, name=None):
@@ -202,7 +205,16 @@ class Trainer(object):
 
         for mname in self.get_model_names():
             # TODO: ugly, need to be prettier
-            setattr(self, mname, th.load(os.path.join(load_path, mname + ext)))
+            try:
+                state_dict = th.load(os.path.join(load_path, mname + ext))
+            except:
+                warnings.warn('Could not load model "%s"' % mname)
+            if '__state' in mname:
+                getattr(self, mname.split('__')[0]).load_state_dict(state_dict)
+            else:
+                setattr(self, mname, state_dict)
+        
+        self.env.disable_update()
         
 
     def save_models(self, name=None):
@@ -215,18 +227,16 @@ class Trainer(object):
         ext = (('_' + str(name)) if name else '') + '.pt'
 
         for mname in self.get_model_names():
-            th.save(getattr(self, mname).cpu(), os.path.join(save_path, mname + ext))
+            model = getattr(self, mname.split('__')[0])
+            if hasattr(model, 'cpu'):
+                model = model.cpu()
+            if '__state' in mname:
+                model = model.state_dict()
+            fpath = os.path.join(save_path, mname + ext)
+            th.save(model, fpath)
 
 
-    def render(self):
-        # if hasattr(self.nets, 'normalization_params'):
-        #     (smean, sstd), (_, rstd) = self.nets.normalization_params
-        #     print(rstd)
-        # else:
-        #     smean, sstd = 0, 1
-        #     print(smean, sstd)
-        smean, sstd = 0, 1
-
+    def render(self):        
         env = self.env
         done = True
 
@@ -258,7 +268,7 @@ class Trainer(object):
             else:
                 env.render()#mode='human')
 
-            action = self.pol((th.FloatTensor(obs) - smean) / sstd)[0].reshape(-1)
+            action = self.pol.deterministic_ac_real(th.FloatTensor(obs))[0].reshape(-1)
             # print(action.shape)
             # print(action)
             obs, reward, done, info = env.step(action)
