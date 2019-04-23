@@ -225,6 +225,9 @@ class Trainer(object):
         metrics = {}
         for k in reported_keys:
             metrics['Mean' + k] = np.mean([m for epi in epis for m in epi['e_is'][k]])
+            if 'rew' in k.lower():
+                metrics['MeanEpi' + k] = np.mean([np.sum(epi[k]) for epi in epis])
+
         return metrics
         
 
