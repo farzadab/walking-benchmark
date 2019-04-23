@@ -171,6 +171,9 @@ class Trainer(object):
                 #     vf.dp_run = False
 
 
+            ## append the metrics to the `results_dict` (reported in the progress.csv)
+            result_dict.update(self.get_extra_metrics(epis))
+
             total_epi += traj.num_epi
             step = traj.num_step
             total_step += step
@@ -215,6 +218,14 @@ class Trainer(object):
                 setattr(self, mname, state_dict)
         
         self.env.disable_update()
+
+
+    def get_extra_metrics(self, epis):
+        reported_keys = epis[0]['e_is'].keys()
+        metrics = {}
+        for k in reported_keys:
+            metrics['Mean' + k] = np.mean([m for epi in epis for m in epi['e_is'][k]])
+        return metrics
         
 
     def save_models(self, name=None):
