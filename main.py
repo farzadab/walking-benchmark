@@ -68,6 +68,7 @@ class Trainer(object):
         '''
             :params ratio: should be a float between 0 and 1
         '''
+        print(self.args.env_curriculum_kwargs.items())
         env_id = self.args.env
         if hasattr(self.args, 'env_kwargs') and 'Roboschool' in self.args.env:
             env_kwargs = self.args.env_kwargs
@@ -75,7 +76,7 @@ class Trainer(object):
                 cur_kwargs = dict([
                     # TODO: enable more than two end-points for the linear interpolation
                     (k, v[0] * (1-ratio) + v[1] * ratio)
-                    for k, v in self.args.env_curriculum_kwargs
+                    for k, v in self.args.env_curriculum_kwargs.items()
                 ])
                 env_kwargs.update(cur_kwargs)
             env_id = auto_tune_env(env_id, env_kwargs)

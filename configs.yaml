@@ -3,9 +3,7 @@ env: 'RoboschoolWalker2d-v1'
 env_kwargs:
   alive_coef: 1.0
 env_curriculum_kwargs:
-  power_coef:
-    1.2
-    0.8
+  power_coef: [1.2, 0.8]
 add_timestep: False
 render: False
 store: True
