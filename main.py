@@ -68,7 +68,6 @@ class Trainer(object):
         '''
             :params ratio: should be a float between 0 and 1
         '''
-        print(self.args.env_curriculum_kwargs.items())
         env_id = self.args.env
         if hasattr(self.args, 'env_kwargs') and 'Roboschool' in self.args.env:
             env_kwargs = self.args.env_kwargs
