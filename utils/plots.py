@@ -27,7 +27,7 @@ class Plot(object):
         if parent is None:
             self.parent = self
             # TODO: make up a name
-            self.fig = plt.figure(figsize=(4.5*ncols, 4.5*nrows))
+            self.fig = plt.figure(figsize=(4.5*nrows, 4.5*ncols))
             self.subplot_cnt = 0
             # self.fig, self.subplots = plt.subplots(nrows, ncols, figsize=(4.5*ncols, 4.5*nrows))
             # self.subplots = np.array(self.subplots).reshape(-1)[::-1].tolist()
@@ -36,7 +36,7 @@ class Plot(object):
     
     def _get_subplot(self, projection=None):
         self.subplot_cnt += 1
-        return self.fig.add_subplot(self.nrows, self.ncols, self.subplot_cnt, projection=projection)
+        return self.fig.add_subplot(self.ncols, self.nrows, self.subplot_cnt, projection=projection)
             
     def _redraw(self):
         if self.fig:
@@ -66,13 +66,17 @@ class Plot(object):
 
 
 class LinePlot(Plot):
-    COLORS = ['b', 'r', 'g', 'c', 'k', 'w', 'y']
-    def __init__(self, xlim=[-1,1], ylim=[-1,1], num_scatters=1, plot_type='-', *args, **kwargs):
+    COLORS = ['b', 'r', 'g', 'c', 'k', 'y', 'm', ]
+    def __init__(self, xlim=[-1,1], ylim=[-1,1], num_scatters=1, plot_type='-', title='', xlabel='', ylabel='', *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.subplot = self.parent._get_subplot()
+        self.subplot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         self.sc = [self.subplot.plot([], [], self.COLORS[i] + plot_type)[0] for i in range(num_scatters)]
         self.subplot.set_xlim(*xlim)
         self.subplot.set_ylim(*ylim)
+        self.subplot.set_title(title)
+        self.subplot.set_xlabel(xlabel)
+        self.subplot.set_ylabel(ylabel)
         self.xlim = xlim
         self.ylim = ylim
         self._redraw()
@@ -94,6 +98,10 @@ class LinePlot(Plot):
             points: should have the shape (N*2) and consist of x,y coordinates
         '''
         self.sc[line_num].set_data(points[:,0], points[:,1])
+        self.xlim = [min(self.xlim[0], points[:,0].min()), max(self.xlim[1], points[:,0].max())]
+        self.ylim = [min(self.ylim[0], points[:,1].max()), max(self.ylim[1], points[:,1].max())]
+        self.subplot.set_xlim(*self.xlim)
+        self.subplot.set_ylim(*self.ylim)
         self._redraw()
 
 
