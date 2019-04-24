@@ -136,7 +136,7 @@ class Trainer(object):
     def train(self):
         args = self.args
 
-        sampler = EpiSampler(self.env, self.pol, num_parallel=self.args.num_processes, seed=self.args.seed)
+        # sampler = EpiSampler(self.env, self.pol, num_parallel=self.args.num_processes, seed=self.args.seed)
 
         # TODO: cuda seems to be broken, I don't care about it right now
         # if args.cuda:
@@ -155,6 +155,11 @@ class Trainer(object):
         while args.num_total_frames > total_step:
             # setup the correct curriculum learning environment
             self.setup_env(total_epi / args.num_total_frames)
+            sampler = EpiSampler(
+                self.env, self.pol,
+                num_parallel=self.args.num_processes,
+                seed=self.args.seed+total_step  # TODO: better fix?
+            )
 
             with measure('sample'):
                 epis = sampler.sample(self.pol, max_steps=args.num_steps * args.num_processes)
@@ -263,7 +268,10 @@ class Trainer(object):
             th.save(model, fpath)
 
 
-    def render(self):        
+    def render(self):
+        # use the env at the end of the curriculum
+        self.setup_env(ratio=1)
+
         env = self.env
         done = True
 
