@@ -64,11 +64,21 @@ class Trainer(object):
         # if args.cuda:
         #     self.nets.cuda()
     
-    def setup_env(self):
+    def setup_env(self, ratio=0):
+        '''
+            :params ratio: should be a float between 0 and 1
+        '''
+        env_id = self.args.env
         if hasattr(self.args, 'env_kwargs') and 'Roboschool' in self.args.env:
-            env_id = auto_tune_env(self.args.env, self.args.env_kwargs)
-        else:
-            env_id = self.args.env
+            env_kwargs = self.args.env_kwargs
+            if hasattr(self.args, 'env_curriculum_kwargs'):
+                cur_kwargs = dict([
+                    # TODO: enable more than two end-points for the linear interpolation
+                    (k, v[0] * (1-ratio) + v[1] * ratio)
+                    for k, v in self.args.env_curriculum_kwargs
+                ])
+                env_kwargs.update(cur_kwargs)
+            env_id = auto_tune_env(env_id, env_kwargs)
         env = GymEnv(
             env_id,
             log_dir=os.path.join(self.args.log_dir, 'movie'),
@@ -143,6 +153,9 @@ class Trainer(object):
 
 
         while args.num_total_frames > total_step:
+            # setup the correct curriculum learning environment
+            self.setup_env(total_epi / args.num_total_frames)
+
             with measure('sample'):
                 epis = sampler.sample(self.pol, max_steps=args.num_steps * args.num_processes)
             with measure('train'):

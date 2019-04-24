@@ -33,5 +33,6 @@ pip install -e .
 popd
 
 cd walking-benchmark
+pip install -r requirements.txt
 ln -s ../roboschool/roboschool .
 ln -s ../cassie_pybullet_env .
