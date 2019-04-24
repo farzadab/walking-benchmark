@@ -9,16 +9,17 @@ def auto_tune_env(env_name, kwargs):
     env_id, version = env_specs.id.split('-')
     new_id = '%s__%s-%s' % (env_id, name_suffix, version)
 
-    union_kwargs = copy.deepcopy(env_specs._kwargs)
-    union_kwargs.update(kwargs)
+    if new_id not in gym.envs.registry.env_specs:
+        union_kwargs = copy.deepcopy(env_specs._kwargs)
+        union_kwargs.update(kwargs)
 
-    gym.envs.registration.register(
-        id=new_id,
-        entry_point=env_specs._entry_point,
-        tags=env_specs.tags,
-        max_episode_steps=env_specs.max_episode_steps,
-        reward_threshold=env_specs.reward_threshold,
-        kwargs=union_kwargs,
-    )
+        gym.envs.registration.register(
+            id=new_id,
+            entry_point=env_specs._entry_point,
+            tags=env_specs.tags,
+            max_episode_steps=env_specs.max_episode_steps,
+            reward_threshold=env_specs.reward_threshold,
+            kwargs=union_kwargs,
+        )
 
     return new_id
