@@ -9,6 +9,7 @@ from builtins import (bytes, str, open, super, range,
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib
+import warnings
 from matplotlib import cm
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -20,7 +21,7 @@ plt.ion()
 
 
 class Plot(object):
-    def __init__(self, nrows=1, ncols=1, parent=None):
+    def __init__(self, title='', nrows=1, ncols=1, parent=None):
         self.fig = None
         self.nrows = nrows
         self.ncols = ncols
@@ -28,6 +29,8 @@ class Plot(object):
             self.parent = self
             # TODO: make up a name
             self.fig = plt.figure(figsize=(4.5*nrows, 4.5*ncols))
+            if title:
+                self.fig.canvas.set_window_title(title)
             self.subplot_cnt = 0
             # self.fig, self.subplots = plt.subplots(nrows, ncols, figsize=(4.5*ncols, 4.5*nrows))
             # self.subplots = np.array(self.subplots).reshape(-1)[::-1].tolist()
@@ -66,12 +69,27 @@ class Plot(object):
 
 
 class LinePlot(Plot):
-    COLORS = ['b', 'r', 'g', 'c', 'k', 'y', 'm', ]
-    def __init__(self, xlim=[-1,1], ylim=[-1,1], num_scatters=1, plot_type='-', title='', xlabel='', ylabel='', *args, **kwargs):
+    COLORS = [
+        '#ff0000', '#00035b', '#feb308', '#1B5E20', '#017b92', '#a2cffe',
+        '#ff028d', '#8b2e16', '#916e99', '#b9ff66', '#000000', '#7bb274', '#ff000d',
+    ]
+    def __init__(
+            self, xlim=[-1,1], ylim=[-1,1], num_scatters=1,
+            plot_type='-', title='', xlabel='', ylabel='', alpha=1.0,
+            *args, **kwargs
+        ):
         super().__init__(*args, **kwargs)
         self.subplot = self.parent._get_subplot()
         self.subplot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-        self.sc = [self.subplot.plot([], [], self.COLORS[i] + plot_type)[0] for i in range(num_scatters)]
+        if num_scatters > len(self.COLORS):
+            warnings.warn('Not enough colors for plotting: the same color may be re-used')
+        self.sc = [
+            self.subplot.plot(
+                [], [], plot_type,
+                color=self.COLORS[i % len(self.COLORS)], alpha=alpha
+            )[0]
+            for i in range(num_scatters)
+        ]
         self.subplot.set_xlim(*xlim)
         self.subplot.set_ylim(*ylim)
         self.subplot.set_title(title)
