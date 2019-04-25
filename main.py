@@ -83,6 +83,12 @@ class Trainer(object):
                     (k, v[0] * (1-c_level) + v[1] * c_level)
                     for k, v in self.args.env_curriculum_kwargs.items()
                 ])
+                if 'power_coef' in self.args.env_curriculum_kwargs:
+                    cur_kwargs['action_coef'] = (
+                        self.args.env_curriculum_kwargs['power_coef'][0]
+                        /
+                        cur_kwargs['power_coef']
+                    )
                 env_kwargs.update(cur_kwargs)
             env_id = auto_tune_env(env_id, env_kwargs)
         env = GymEnv(

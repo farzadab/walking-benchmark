@@ -51,7 +51,8 @@ def main():
         print('Loading ... ', path)
         df = pd.read_csv(os.path.join(path, 'progress.csv'))
         for j, column in enumerate(args.columns):
-            df[column] = gaussian_filter1d(df[column], sigma=args.smoothing)
+            if args.smoothing > 0.1:
+                df[column] = gaussian_filter1d(df[column], sigma=args.smoothing)
             plots[j].update(df[['TotalStep', column]].values, line_num=i)
     
     plt.show()
