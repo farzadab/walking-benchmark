@@ -7,6 +7,9 @@ class NormalizedEnv(gym.ObservationWrapper):
         super().__init__(env)
         self.stats = Stats(env.observation_space.shape, max_obs=4000)
     
+    def replace_wrapped_env(self, env):
+        self.env = env
+    
     def observation(self, obs):
         self.stats.observe(obs)
         return self.stats.normalize(obs).numpy()

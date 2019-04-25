@@ -37,6 +37,7 @@ import roboschool
 class Trainer(object):
     config_filename = 'configs.yaml'
     def __init__(self, args=None):
+        self.env = None
         if args is None:
             args = ArgsFromFile(self.config_filename)
         self.args = args
@@ -99,7 +100,12 @@ class Trainer(object):
         env.env.seed(self.args.seed)
         if self.args.c2d:
             env = C2DEnv(env)
-        self.env = NormalizedEnv(env)
+
+        if self.env is None:
+            self.env = NormalizedEnv(env)
+        else:
+            # don't want to override the normalization
+            self.env.replace_wrapped_env(env)
     
     def setup_nets(self):
         ob_space = self.env.observation_space
@@ -175,6 +181,9 @@ class Trainer(object):
 
             with measure('sample'):
                 epis = sampler.sample(self.pol, max_steps=args.num_steps * args.num_processes)
+            
+            del sampler
+
             with measure('train'):
                 traj = Traj()
                 traj.add_epis(epis)
@@ -221,7 +230,6 @@ class Trainer(object):
             self.save_models('last')
             
             del traj
-        del sampler
     
     def get_model_names(self):
         return [
@@ -256,7 +264,9 @@ class Trainer(object):
         for k in reported_keys:
             metrics['Mean' + k] = np.mean([m for epi in epis for m in epi['e_is'][k]])
             if 'rew' in k.lower():
-                metrics['MeanEpi' + k] = np.mean([np.sum(epi['e_is'][k]) for epi in epis])
+                epi_values = [np.sum(epi['e_is'][k]) for epi in epis]
+                metrics['MeanEpi' + k] = np.mean(epi_values)
+                metrics['MaxEpi' + k] = np.max(epi_values)
 
         return metrics
         
