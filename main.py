@@ -72,9 +72,15 @@ class Trainer(object):
         if hasattr(self.args, 'env_kwargs') and 'Roboschool' in self.args.env:
             env_kwargs = self.args.env_kwargs
             if hasattr(self.args, 'env_curriculum_kwargs'):
+                # Digitize the ratio into N levels
+                c_level = (np.digitize(
+                    ratio,
+                    np.linspace(0, 1+1e-6, self.args.curriculum_levels+1)
+                ) - 1) / (self.args.curriculum_levels-1)
+                print('Curriculum Level:', c_level)
                 cur_kwargs = dict([
                     # TODO: enable more than two end-points for the linear interpolation
-                    (k, v[0] * (1-ratio) + v[1] * ratio)
+                    (k, v[0] * (1-c_level) + v[1] * c_level)
                     for k, v in self.args.env_curriculum_kwargs.items()
                 ])
                 env_kwargs.update(cur_kwargs)
@@ -154,7 +160,7 @@ class Trainer(object):
 
         while args.num_total_frames > total_step:
             # setup the correct curriculum learning environment
-            self.setup_env(total_epi / args.num_total_frames)
+            self.setup_env(total_step / args.num_total_frames)
             sampler = EpiSampler(
                 self.env, self.pol,
                 num_parallel=self.args.num_processes,
@@ -272,6 +278,7 @@ class Trainer(object):
         # use the env at the end of the curriculum
         self.setup_env(ratio=1)
 
+        print('current log stds:', self.pol.net.log_std_param)        
         env = self.env
         done = True
 
@@ -300,14 +307,14 @@ class Trainer(object):
                 # env.unwrapped.body_xyz = env.unwrapped.robot.body_xyz
                 # env.unwrapped.camera._p = env.unwrapped._p
                 # env.unwrapped.camera_adjust()#distance=5, yaw=0)
-            else:
-                env.render()#mode='human')
+#            else:
+#                env.render()#mode='human')
 
             action = self.pol.deterministic_ac_real(th.FloatTensor(obs))[0].reshape(-1)
             # print(action.shape)
             # print(action)
             obs, reward, done, info = env.step(action)
-            total_reward += reward
+            total_reward += info['ProgressRew']
             time.sleep(1/60)
 
 

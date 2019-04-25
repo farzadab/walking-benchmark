@@ -84,6 +84,12 @@ def str2bool(v):
 # The option_string is always gonna be --<arg_name>
 # And everything is always assumed to be required if the default is not present
 _DEFAULT_ARGS = {
+    'name': {
+        'help': 'Name of the experiment.',
+    },
+    'desc': {
+        'help': 'Description of the experiment.',
+    },
     # env params
     'env': {
         'help': 'Name of the environment to use.',

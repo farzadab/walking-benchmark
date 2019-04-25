@@ -47,7 +47,8 @@ class LogMaster(object):
             if (not hasattr(args, 'name')) or args.name is None or len(args.name) == 0:
                 self.args.name = input('%s### Please provide a name for the experiment: %s' % (Fore.RED, Style.RESET_ALL))
             if (not hasattr(args, 'desc')) or args.desc is None or len(args.desc) == 0:
-                self.args.desc = input('%s### Please provide a description for the experiment: %s' % (Fore.RED, Style.RESET_ALL))
+                self.args.desc = ''
+#                self.args.desc = input('%s### Please provide a description for the experiment: %s' % (Fore.RED, Style.RESET_ALL))
 
             writer = tensorboardX.SummaryWriter(comment='-'+self.args.name)
         else:
