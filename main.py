@@ -10,6 +10,9 @@ import numpy as np
 import torch as th
 from colorama import Fore, Style
 
+from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
+import torch.nn.functional as F
+
 from utils.argparser import ArgsFromFile
 from utils.logs import LogMaster
 from utils.envs import auto_tune_env
@@ -26,9 +29,9 @@ from machina.vfuncs import DeterministicSVfunc
 from machina.envs import GymEnv, C2DEnv
 from machina import logger
 
-from simple_net import PolNet, VNet, PolNetLSTM, VNetLSTM
+from simple_net import PolNet, VRNet
 
-
+from utils.nets import make_net
 import cassie_pybullet_env.envs
 import pybullet_envs
 import roboschool
@@ -117,10 +120,11 @@ class Trainer(object):
         ob_space = self.env.observation_space
         ac_space = self.env.action_space
 
-        if self.args.rnn:
-            pol_net = PolNetLSTM(ob_space, ac_space, h_size=256, cell_size=256)
-        else:
-            pol_net = PolNet(ob_space, ac_space)
+        shared_net = make_net(
+            [ob_space.shape[0], 100, 100], [th.nn.ReLU(), th.nn.ReLU()]
+        )
+
+        pol_net = PolNet(shared_net, ob_space, ac_space)
 
         if isinstance(ac_space, gym.spaces.Box):
             pol_class = GaussianPol
@@ -140,10 +144,20 @@ class Trainer(object):
             parallel_dim=1 if self.args.rnn else 0,
         )
 
-        if self.args.rnn:
-            vf_net = VNetLSTM(ob_space, h_size=256, cell_size=256)
-        else:
-            vf_net = VNet(ob_space)
+        # if self.args.rnn:
+        #     vf_net = VNetLSTM(ob_space, h_size=256, cell_size=256)
+        # else:
+        #     vf_net = VNet(ob_space)
+
+        self.reward_net = VRNet(shared_net, output_size=4)
+
+        if not self.args.share_value_policy:
+            # creates another network, therefore it's not shared anymore
+            shared_net = make_net(
+                [ob_space.shape[0], 100, 100], [th.nn.ReLU(), th.nn.ReLU()]
+            )
+
+        vf_net = VRNet(shared_net)
 
         vf = DeterministicSVfunc(
             ob_space,
@@ -157,7 +171,8 @@ class Trainer(object):
         self.vf = vf
 
         self.optim_pol = th.optim.Adam(pol_net.parameters(), self.args.pol_lr)
-        self.optim_vf = th.optim.Adam(vf_net.parameters(), self.args.vf_lr)
+        self.optim_vf = th.optim.Adam(vf_net.parameters(), self.args.vf_lr / 2)
+        self.optim_rnet = th.optim.Adam(self.reward_net.parameters(), self.args.vf_lr)
 
     def setup_experiment(self):
         self.logger = LogMaster(self.args)
@@ -227,6 +242,9 @@ class Trainer(object):
                     max_grad_norm=args.max_grad_norm,
                 )
 
+                if self.args.learn_rewards_sup:
+                    self.train_reward_net(epis)
+
                 # if args.data_parallel:
                 #     self.pol.dp_run = False
                 #     vf.dp_run = False
@@ -257,6 +275,38 @@ class Trainer(object):
             self.save_models("last")
 
             del traj
+
+    def train_reward_net(self, epis):
+
+        rewards = {k: [] for k in epis[0]["e_is"].keys() if "__" in k}
+        obs = np.zeros((0, epis[0]["obs"].shape[1]))
+        for epi in epis:
+            obs = np.concatenate((obs, epi["obs"]))
+            for k in rewards.keys():
+                rewards[k] = np.concatenate((rewards[k], epi["e_is"][k]))
+
+        y = np.vstack([rewards[k] for k in sorted(rewards.keys())]).transpose()
+        # print("y_shape", y.shape)
+        # print("obs_shape", obs.shape)
+        # print("num_epis", len(epis))
+
+        y = th.FloatTensor(y)
+        obs = th.FloatTensor(obs)
+
+        sampler = th.utils.data.sampler.BatchSampler(
+            SubsetRandomSampler(range(y.shape[0])),
+            self.args.batch_size,
+            drop_last=False,
+        )
+        for indices in sampler:
+            y_hat = self.reward_net(obs[indices])
+            loss = F.mse_loss(y_hat, y[indices])
+            self.optim_rnet.zero_grad()
+            loss.backward()
+            th.nn.utils.clip_grad_norm_(
+                self.reward_net.parameters(), self.args.max_grad_norm
+            )
+            self.optim_rnet.step()
 
     def get_model_names(self):
         return [
@@ -289,6 +339,8 @@ class Trainer(object):
         reported_keys = epis[0]["e_is"].keys()
         metrics = {}
         for k in reported_keys:
+            if "__" in k:
+                continue
             metrics["Mean" + k] = np.mean([m for epi in epis for m in epi["e_is"][k]])
             if "rew" in k.lower():
                 epi_values = [np.sum(epi["e_is"][k]) for epi in epis]

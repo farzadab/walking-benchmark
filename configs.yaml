@@ -1,9 +1,7 @@
 # env: 'CassieEnv-v0'
 env: 'RoboschoolWalker2d-v1'
 env_kwargs:
-  alive_coef: 1.0
-env_curriculum_kwargs:
-  power_coef: [1.2, 0.8]
+  power_coef: 1.5
 add_timestep: False
 render: False
 store: True
@@ -49,3 +47,10 @@ rnn: False
 data_parallel: False
 pol_lr: 0.0003
 vf_lr:  0.0005
+
+# whether or not to use a shared network for the policy and value functions
+share_value_policy: False
+
+# whether or not to use a shared net for policy and reward
+# which is learned via supervised learning
+learn_rewards_sup: False
