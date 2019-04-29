@@ -98,6 +98,7 @@ class LinePlot(Plot):
         title="",
         xlabel="",
         ylabel="",
+        ylog_scale=False,
         alpha=1.0,
         *args,
         **kwargs
@@ -109,6 +110,8 @@ class LinePlot(Plot):
             warnings.warn(
                 "Not enough colors for plotting: the same color may be re-used"
             )
+        if ylog_scale:
+            self.subplot.set_yscale('log')
         self.sc = [
             self.subplot.plot(
                 [], [], plot_type, color=self.COLORS[i % len(self.COLORS)], alpha=alpha
@@ -121,7 +124,7 @@ class LinePlot(Plot):
         self.subplot.set_xlabel(xlabel)
         self.subplot.set_ylabel(ylabel)
         self.xlim = xlim
-        self.ylim = ylim
+        self.ylim = [np.inf, -np.inf]
         self._redraw()
 
     def add_point(self, x, y, line_num=0, redraw=True):
@@ -146,7 +149,7 @@ class LinePlot(Plot):
             max(self.xlim[1], points[:, 0].max()),
         ]
         self.ylim = [
-            min(self.ylim[0], points[:, 1].max()),
+            min(self.ylim[0], points[:, 1].min()),
             max(self.ylim[1], points[:, 1].max()),
         ]
         self.subplot.set_xlim(*self.xlim)
