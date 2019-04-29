@@ -312,6 +312,7 @@ class Trainer(object):
         return [
             "pol",
             "vf",
+            "reward_net",
             # 'optim_pol', 'optim_vf',
             "env__state",
         ]
