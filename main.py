@@ -120,7 +120,7 @@ class Trainer(object):
         if self.args.rnn:
             pol_net = PolNetLSTM(ob_space, ac_space, h_size=256, cell_size=256)
         else:
-            pol_net = PolNet(ob_space, ac_space)
+            pol_net = PolNet(ob_space, ac_space, log_std=self.args.log_stdev)
 
         if isinstance(ac_space, gym.spaces.Box):
             pol_class = GaussianPol
