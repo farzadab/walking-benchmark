@@ -2,8 +2,12 @@
 env: 'RoboschoolWalker2d-v1'
 env_kwargs:
   alive_coef: 1.0
-env_curriculum_kwargs:
-  power_coef: [1.2, 0.8]
+curriculum:
+  levels: 10
+  log_stdev: [-1, -2]
+  compensate_power: True
+  env_kwargs:
+    power_coef: [1.2, 0.8]
 add_timestep: False
 render: False
 store: True
@@ -14,7 +18,7 @@ use_peb: True
 
 num_layers: 3
 hidden_size: 64
-log_stdev: -2
+log_stdev: -1
 lr: 0.0003
 clip_eps: 0.2
 

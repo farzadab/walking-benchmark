@@ -39,9 +39,15 @@ class Trainer(object):
 
     def __init__(self, args=None):
         self.env = None
+        self.experiment = None
+        self.c_level = None
+        self.pol = None
+
         if args is None:
             args = ArgsFromFile(self.config_filename)
         self.args = args
+
+        self.env_kwargs = copy.deepcopy(getattr(self.args, "env_kwargs", {}))
 
         device_name = "cpu" if args.cuda < 0 else "cuda:{}".format(args.cuda)
         set_device(th.device(device_name))
@@ -49,7 +55,6 @@ class Trainer(object):
         self.num_updates = (
             int(args.num_total_frames) // args.num_steps // args.num_processes
         )
-        self.experiment = None
 
         th.set_num_threads(args.num_processes)
 
@@ -68,36 +73,13 @@ class Trainer(object):
         # if args.cuda:
         #     self.nets.cuda()
 
-    def setup_env(self, ratio=0):
+    def setup_env(self):
         """
             :params ratio: should be a float between 0 and 1
         """
         env_id = self.args.env
-        if hasattr(self.args, "env_kwargs") and "Roboschool" in self.args.env:
-            env_kwargs = self.args.env_kwargs
-            if hasattr(self.args, "env_curriculum_kwargs"):
-                # Digitize the ratio into N levels
-                c_level = (
-                    np.digitize(
-                        ratio, np.linspace(0, 1 + 1e-6, self.args.curriculum_levels + 1)
-                    )
-                    - 1
-                ) / (self.args.curriculum_levels - 1)
-                print("Curriculum Level:", c_level)
-                cur_kwargs = dict(
-                    [
-                        # TODO: enable more than two end-points for the linear interpolation
-                        (k, v[0] * (1 - c_level) + v[1] * c_level)
-                        for k, v in self.args.env_curriculum_kwargs.items()
-                    ]
-                )
-                if "power_coef" in self.args.env_curriculum_kwargs:
-                    cur_kwargs["action_coef"] = (
-                        self.args.env_curriculum_kwargs["power_coef"][0]
-                        / cur_kwargs["power_coef"]
-                    )
-                env_kwargs.update(cur_kwargs)
-            env_id = auto_tune_env(env_id, env_kwargs)
+        if self.env_kwargs:
+            env_id = auto_tune_env(env_id, self.env_kwargs)
         env = GymEnv(
             env_id,
             log_dir=os.path.join(self.args.log_dir, "movie"),
@@ -112,6 +94,60 @@ class Trainer(object):
         else:
             # don't want to override the normalization
             self.env.replace_wrapped_env(env)
+
+    def get_curriculum_level(self, ratio):
+        # Digitize the ratio into N levels
+        return (
+            np.digitize(
+                ratio, np.linspace(0, 1 + 1e-6, self.args.curriculum.levels + 1)
+            )
+            - 1
+        ) / (self.args.curriculum.levels - 1)
+
+    def curriculum_handler(self, ratio):
+        if "curriculum" not in self.args:
+            return
+
+        if "levels" not in self.args.curriculum:
+            raise ValueError(
+                "Curriculum levels not specified: `configs.yaml` shoud have an integer `curriculum.levels`"
+            )
+
+        c_level = self.get_curriculum_level(ratio)
+
+        print("Curriculum Level:", c_level)
+
+        if self.c_level != c_level:
+            print("Leveled up!")
+            self.c_level = c_level
+
+            self.handle_env_curr(self.c_level)
+            self.handle_stdev_curr(self.c_level)
+
+    def handle_env_curr(self, c_level):
+        curric = self.args.curriculum
+        if hasattr(curric, "env_kwargs"):
+            curric_kwargs = dict(
+                [
+                    # TODO: enable more than two end-points for the linear interpolation
+                    (k, v[0] * (1 - c_level) + v[1] * c_level)
+                    for k, v in self.args.env_curriculum_kwargs.items()
+                ]
+            )
+            if (
+                getattr(curric, "compensate_power", False)
+                and "power_coef" in curric_kwargs
+            ):
+                curric_kwargs["action_coef"] = (
+                    curric.env_kwargs["power_coef"][0] / curric_kwargs["power_coef"]
+                )
+            self.env_kwargs.update(curric_kwargs)
+            self.setup_env()
+
+    def handle_stdev_curr(self, c_level):
+        if "log_stdev" in self.args.curriculum and self.pol is not None:
+            start, finish = self.args.curriculum.log_stdev
+            self.pol.reset_log_std(finish * self.c_level + start * (1 - self.c_level))
 
     def setup_nets(self):
         ob_space = self.env.observation_space
@@ -184,8 +220,10 @@ class Trainer(object):
         logger.add_tabular_output(score_file)
 
         while args.num_total_frames > total_step:
-            # setup the correct curriculum learning environment
-            self.setup_env(total_step / args.num_total_frames)
+            # setup the correct curriculum learning environment/parameters
+            self.curriculum_handler(total_step / args.num_total_frames)
+
+            # TODO: ....
             sampler = EpiSampler(
                 self.env,
                 self.pol,
@@ -318,7 +356,7 @@ class Trainer(object):
 
     def render(self):
         # use the env at the end of the curriculum
-        self.setup_env(ratio=1)
+        self.curriculum_handler(1)
 
         print("current log stds:", self.pol.net.log_std_param)
         env = self.env

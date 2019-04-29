@@ -66,6 +66,9 @@ class PolNet(nn.Module):
                 self.output_layer = nn.Linear(h2, action_space.n)
                 self.output_layer.apply(mini_weight_init)
 
+    def reset_log_std(self, log_std):
+        self.log_std_param[:] = log_std
+
     def forward(self, ob):
         h = F.relu(self.fc1(ob))
         h = F.relu(self.fc2(h))
