@@ -23,11 +23,18 @@ def weight_init(m):
 
 class PolNet(nn.Module):
     def __init__(
-        self, observation_space, action_space, h1=200, h2=100, deterministic=False
+        self,
+        shared_net,
+        observation_space,
+        action_space,
+        h1=200,
+        h2=100,
+        deterministic=False,
     ):
         super(PolNet, self).__init__()
 
         self.deterministic = deterministic
+        self.shared_net = shared_net
 
         if isinstance(action_space, gym.spaces.Box):
             self.discrete = False
@@ -38,7 +45,8 @@ class PolNet(nn.Module):
             else:
                 self.multi = False
 
-        self.fc1 = nn.Linear(observation_space.shape[0], h1)
+        input_size = shared_net.output_size if shared_net else observation_space.shape[0]
+        self.fc1 = nn.Linear(input_size, h1)
         self.fc2 = nn.Linear(h1, h2)
         self.fc1.apply(weight_init)
         self.fc2.apply(weight_init)
@@ -61,7 +69,10 @@ class PolNet(nn.Module):
                 self.output_layer.apply(mini_weight_init)
 
     def forward(self, ob):
-        h = F.relu(self.fc1(ob))
+        h = ob
+        if self.shared_net:
+            h = self.shared_net(h)
+        h = F.relu(self.fc1(h))
         h = F.relu(self.fc2(h))
         if not self.discrete:
             mean = torch.tanh(self.mean_layer(h))
@@ -83,16 +94,21 @@ class PolNet(nn.Module):
                 return torch.softmax(self.output_layer(h), dim=-1)
 
 
-class VNet(nn.Module):
-    def __init__(self, observation_space, h1=200, h2=100):
-        super(VNet, self).__init__()
-        self.fc1 = nn.Linear(observation_space.shape[0], h1)
+class VRNet(nn.Module):
+    def __init__(self, shared_net, observation_space=None, output_size=1, h1=200, h2=100):
+        super().__init__()
+        self.shared_net = shared_net
+        input_size = shared_net.output_size if shared_net else observation_space.shape[0]
+        self.fc1 = nn.Linear(input_size, h1)
         self.fc2 = nn.Linear(h1, h2)
-        self.output_layer = nn.Linear(h2, 1)
+        self.output_layer = nn.Linear(h2, output_size)
         self.apply(weight_init)
 
     def forward(self, ob):
-        h = F.relu(self.fc1(ob))
+        h = ob
+        if self.shared_net:
+            h = self.shared_net(h)
+        h = F.relu(self.fc1(h))
         h = F.relu(self.fc2(h))
         return self.output_layer(h)
 

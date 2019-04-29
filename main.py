@@ -172,7 +172,7 @@ class Trainer(object):
 
         self.optim_pol = th.optim.Adam(pol_net.parameters(), self.args.pol_lr)
         self.optim_vf = th.optim.Adam(vf_net.parameters(), self.args.vf_lr / 2)
-        self.optim_rnet = th.optim.Adam(self.reward_net.parameters(), self.args.vf_lr)
+        self.optim_rnet = th.optim.Adam(self.reward_net.parameters(), self.args.vf_lr / 10)
 
     def setup_experiment(self):
         self.logger = LogMaster(self.args)

@@ -1,5 +1,5 @@
 # env: 'CassieEnv-v0'
-env: 'RoboschoolWalker2d-v1'
+env: 'RoboschoolHalfCheetah-v1'
 env_kwargs:
   power_coef: 1.5
 add_timestep: False
@@ -31,7 +31,7 @@ l2_reg_w: 0.05
 max_grad_norm: 1
 
 num_steps: 900
-num_total_frames: 6000000
+num_total_frames: 2000000
 num_processes: 10 # TODO: multiprocessing.cpu_count() 
 
 cuda: -1 # TODO: th.cuda.is_available()
@@ -53,4 +53,4 @@ share_value_policy: False
 
 # whether or not to use a shared net for policy and reward
 # which is learned via supervised learning
-learn_rewards_sup: False
+learn_rewards_sup: True
