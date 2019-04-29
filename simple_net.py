@@ -29,6 +29,7 @@ class PolNet(nn.Module):
         action_space,
         h1=200,
         h2=100,
+        log_std=-1,
         deterministic=False,
     ):
         super(PolNet, self).__init__()
@@ -54,9 +55,9 @@ class PolNet(nn.Module):
         if not self.discrete:
             self.mean_layer = nn.Linear(h2, action_space.shape[0])
             if not self.deterministic:
-                self.log_std_param = -1 * torch.ones(action_space.shape[0])
+                self.log_std_param = log_std * torch.ones(action_space.shape[0])
                 # self.log_std_param = nn.Parameter(
-                #     torch.randn(action_space.shape[0])*1e-10 - 1)
+                #     torch.randn(action_space.shape[0])*1e-10 + log_std)
             self.mean_layer.apply(mini_weight_init)
         else:
             if self.multi:

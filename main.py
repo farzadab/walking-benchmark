@@ -124,7 +124,7 @@ class Trainer(object):
             [ob_space.shape[0], 100, 100], [th.nn.ReLU(), th.nn.ReLU()]
         )
 
-        pol_net = PolNet(shared_net, ob_space, ac_space)
+        pol_net = PolNet(shared_net, ob_space, ac_space, log_std=self.args.log_stdev)
 
         if isinstance(ac_space, gym.spaces.Box):
             pol_class = GaussianPol
@@ -329,6 +329,7 @@ class Trainer(object):
                 state_dict = th.load(os.path.join(load_path, mname + ext))
             except:
                 warnings.warn('Could not load model "%s"' % mname)
+                continue
             if "__state" in mname:
                 getattr(self, mname.split("__")[0]).load_state_dict(state_dict)
             else:

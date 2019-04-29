@@ -1,13 +1,14 @@
 import copy
 import gym.envs
 
+
 def auto_tune_env(env_name, kwargs):
     env_specs = gym.envs.registry.env_specs[env_name]
 
-    name_suffix = '_'.join([str(k) + '_' + str(v) for k, v in kwargs.items()])
+    name_suffix = "_".join([str(k) + "_" + str(v) for k, v in kwargs.items()])
 
-    env_id, version = env_specs.id.split('-')
-    new_id = '%s__%s-%s' % (env_id, name_suffix, version)
+    env_id, version = env_specs.id.split("-")
+    new_id = "%s__%s-%s" % (env_id, name_suffix, version)
 
     if new_id not in gym.envs.registry.env_specs:
         union_kwargs = copy.deepcopy(env_specs._kwargs)
