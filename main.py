@@ -99,10 +99,10 @@ class Trainer(object):
         # Digitize the ratio into N levels
         return (
             np.digitize(
-                ratio, np.linspace(0, 1 + 1e-6, self.args.curriculum.levels + 1)
+                ratio, np.linspace(0, 1 + 1e-6, self.args.curriculum["levels"] + 1)
             )
             - 1
-        ) / (self.args.curriculum.levels - 1)
+        ) / (self.args.curriculum["levels"] - 1)
 
     def curriculum_handler(self, ratio):
         if not hasattr(self.args, "curriculum"):
@@ -131,7 +131,7 @@ class Trainer(object):
                 [
                     # TODO: enable more than two end-points for the linear interpolation
                     (k, v[0] * (1 - c_level) + v[1] * c_level)
-                    for k, v in self.args.env_curriculum_kwargs.items()
+                    for k, v in curric["env_kwargs"].items()
                 ]
             )
             if (
@@ -139,14 +139,14 @@ class Trainer(object):
                 and "power_coef" in curric_kwargs
             ):
                 curric_kwargs["action_coef"] = (
-                    curric.env_kwargs["power_coef"][0] / curric_kwargs["power_coef"]
+                    curric["env_kwargs"]["power_coef"][0] / curric_kwargs["power_coef"]
                 )
             self.env_kwargs.update(curric_kwargs)
             self.setup_env()
 
     def handle_stdev_curr(self, c_level):
         if "log_stdev" in self.args.curriculum and self.pol is not None:
-            start, finish = self.args.curriculum.log_stdev
+            start, finish = self.args.curriculum["log_stdev"]
             self.pol.reset_log_std(finish * self.c_level + start * (1 - self.c_level))
 
     def setup_nets(self):
