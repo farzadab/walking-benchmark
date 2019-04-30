@@ -29,7 +29,7 @@ from machina import logger
 from simple_net import PolNet, VNet, PolNetLSTM, VNetLSTM
 
 
-import cassie_pybullet_env.envs
+import mocca_envs
 import pybullet_envs
 import roboschool
 

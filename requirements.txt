@@ -14,6 +14,8 @@ tensorflow  # only used to run tensorboard
 machina-rl
 ipdb  # debugging
 
+git+https://github.com/UBCMOCCA/mocca_envs  # mocca_envs
+
 # using a modified version of this package:
 # roboschool  # may require installing some packages first
               # Ubuntu: sudo apt-get install qtbase5-dev libqt5opengl5-dev libassimp-dev cmake patchelf
