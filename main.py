@@ -82,7 +82,7 @@ class Trainer(object):
             env_id = auto_tune_env(env_id, self.env_kwargs)
         env = GymEnv(
             env_id,
-            log_dir=os.path.join(self.args.log_dir, "movie"),
+            # log_dir=os.path.join(self.args.log_dir, "movie"),
             record_video=self.args.record,
         )
         env.env.seed(self.args.seed)

@@ -42,6 +42,8 @@ class LogMaster(object):
         self.log_dir = None
         self.args = args
         if args.store:
+            if hasattr(args, "log_dir"):
+                self.log_dir = args.log_dir
             ## prompt the user to provide a desciption
             if (not hasattr(args, "name")) or args.name is None or len(args.name) == 0:
                 self.args.name = input(
@@ -52,7 +54,9 @@ class LogMaster(object):
                 self.args.desc = ""
             #                self.args.desc = input('%s### Please provide a description for the experiment: %s' % (Fore.RED, Style.RESET_ALL))
 
-            writer = tensorboardX.SummaryWriter(comment="-" + self.args.name)
+            writer = tensorboardX.SummaryWriter(
+                log_dir=self.log_dir, comment="-" + self.args.name
+            )
         else:
             writer = ConsoleWriter()
 

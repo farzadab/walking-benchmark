@@ -93,7 +93,7 @@ _DEFAULT_ARGS = {
     # paths
     "save_path": {"type": str},
     "save_interval": {"type": int},
-    "load_path": {"type": str},
+    "log_dir": {"type": str},
     "load_interval": {"type": int},
     "load_path": {"type": str, "help": "Just runs a previously saved model."},
     # model parameters
