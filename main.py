@@ -105,7 +105,7 @@ class Trainer(object):
         ) / (self.args.curriculum.levels - 1)
 
     def curriculum_handler(self, ratio):
-        if "curriculum" not in self.args:
+        if not hasattr(self.args, "curriculum"):
             return
 
         if "levels" not in self.args.curriculum:
