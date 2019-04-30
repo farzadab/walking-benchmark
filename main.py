@@ -147,7 +147,9 @@ class Trainer(object):
     def handle_stdev_curr(self, c_level):
         if "log_stdev" in self.args.curriculum and self.pol is not None:
             start, finish = self.args.curriculum["log_stdev"]
-            self.pol.reset_log_std(finish * self.c_level + start * (1 - self.c_level))
+            self.pol.net.reset_log_std(
+                finish * self.c_level + start * (1 - self.c_level)
+            )
 
     def setup_nets(self):
         ob_space = self.env.observation_space
