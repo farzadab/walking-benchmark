@@ -39,6 +39,7 @@ class Trainer(object):
 
     def __init__(self, args=None):
         self.env = None
+        self.sampler = None
         self.experiment = None
         self.c_level = None
         self.pol = None
@@ -95,6 +96,13 @@ class Trainer(object):
             # don't want to override the normalization
             self.env.replace_wrapped_env(env)
 
+        sampler = EpiSampler(
+            self.env,
+            self.pol,
+            num_parallel=self.args.num_processes,
+            seed=self.args.seed + total_step,  # TODO: better fix?
+        )
+
     def get_curriculum_level(self, ratio):
         # Digitize the ratio into N levels
         return (
@@ -106,7 +114,7 @@ class Trainer(object):
 
     def curriculum_handler(self, ratio):
         if not hasattr(self.args, "curriculum"):
-            return
+            return False
 
         if "levels" not in self.args.curriculum:
             raise ValueError(
@@ -123,6 +131,9 @@ class Trainer(object):
 
             self.handle_env_curr(self.c_level)
             self.handle_stdev_curr(self.c_level)
+
+            return True
+        return False
 
     def handle_env_curr(self, c_level):
         curric = self.args.curriculum
@@ -206,8 +217,6 @@ class Trainer(object):
     def train(self):
         args = self.args
 
-        # sampler = EpiSampler(self.env, self.pol, num_parallel=self.args.num_processes, seed=self.args.seed)
-
         # TODO: cuda seems to be broken, I don't care about it right now
         # if args.cuda:
         #     # current_obs = current_obs.cuda()
@@ -217,39 +226,41 @@ class Trainer(object):
         total_epi = 0
         total_step = 0
         max_rew = -1e6
+        sampler = None
 
         score_file = os.path.join(self.logger.get_logdir(), "progress.csv")
         logger.add_tabular_output(score_file)
 
         while args.num_total_frames > total_step:
             # setup the correct curriculum learning environment/parameters
-            self.curriculum_handler(total_step / args.num_total_frames)
+            new_curriculum = self.curriculum_handler(total_step / args.num_total_frames)
 
-            # TODO: ....
-            sampler = EpiSampler(
-                self.env,
-                self.pol,
-                num_parallel=self.args.num_processes,
-                seed=self.args.seed + total_step,  # TODO: better fix?
-            )
+            if total_step == 0 or new_curriculum:
+                if sampler is not None:
+                    del sampler
+                sampler = EpiSampler(
+                    self.env,
+                    self.pol,
+                    num_parallel=self.args.num_processes,
+                    seed=self.args.seed + total_step,  # TODO: better fix?
+                )
 
             with measure("sample"):
                 epis = sampler.sample(
                     self.pol, max_steps=args.num_steps * args.num_processes
                 )
 
-            del sampler
-
             with measure("train"):
-                traj = Traj()
-                traj.add_epis(epis)
+                with measure("register_epis"):
+                    traj = Traj()
+                    traj.add_epis(epis)
 
-                traj = ef.compute_vs(traj, self.vf)
-                traj = ef.compute_rets(traj, args.decay_gamma)
-                traj = ef.compute_advs(traj, args.decay_gamma, args.gae_lambda)
-                traj = ef.centerize_advs(traj)
-                traj = ef.compute_h_masks(traj)
-                traj.register_epis()
+                    traj = ef.compute_vs(traj, self.vf)
+                    traj = ef.compute_rets(traj, args.decay_gamma)
+                    traj = ef.compute_advs(traj, args.decay_gamma, args.gae_lambda)
+                    traj = ef.centerize_advs(traj)
+                    traj = ef.compute_h_masks(traj)
+                    traj.register_epis()
 
                 # if args.data_parallel:
                 #     self.pol.dp_run = True
