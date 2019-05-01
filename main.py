@@ -96,13 +96,6 @@ class Trainer(object):
             # don't want to override the normalization
             self.env.replace_wrapped_env(env)
 
-        sampler = EpiSampler(
-            self.env,
-            self.pol,
-            num_parallel=self.args.num_processes,
-            seed=self.args.seed + total_step,  # TODO: better fix?
-        )
-
     def get_curriculum_level(self, ratio):
         # Digitize the ratio into N levels
         return (
