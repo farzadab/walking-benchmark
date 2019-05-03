@@ -109,6 +109,7 @@ _DEFAULT_ARGS = {
     "lr": {"type": float},
     "pol_lr": {"type": float},
     "vf_lr": {"type": float},
+    "lr_decay_gamma": {"type": float, "default": 0.992},
     "weight_decay": {"type": float},
     "decay_gamma": {"type": float},
     "gae_lambda": {"type": float},

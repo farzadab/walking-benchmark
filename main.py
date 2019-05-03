@@ -8,6 +8,7 @@ import multiprocessing
 import pybullet_envs
 import numpy as np
 import torch as th
+from torch.optim.lr_scheduler import ExponentialLR
 from colorama import Fore, Style
 
 from utils.argparser import ArgsFromFile
@@ -200,6 +201,8 @@ class Trainer(object):
 
         self.optim_pol = th.optim.Adam(pol_net.parameters(), self.args.pol_lr)
         self.optim_vf = th.optim.Adam(vf_net.parameters(), self.args.vf_lr)
+        self.scheduler_pol = ExponentialLR(self.optim_pol, self.args.lr_decay_gamma)
+        self.scheduler_vf = ExponentialLR(self.optim_vf, self.args.lr_decay_gamma)
 
     def setup_experiment(self):
         self.logger = LogMaster(self.args)
@@ -299,6 +302,9 @@ class Trainer(object):
                 max_rew = mean_rew
 
             self.save_models("last")
+
+            self.scheduler_pol.step()
+            self.scheduler_vf.step()
 
             del traj
 
@@ -401,8 +407,7 @@ class Trainer(object):
             # print(action.shape)
             # print(action)
             obs, reward, done, info = env.step(action)
-            total_reward += info["ProgressRew"]
-            time.sleep(1 / 60)
+            total_reward += reward  # info["ProgressRew"]
 
 
 def main():
