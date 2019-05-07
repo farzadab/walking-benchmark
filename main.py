@@ -33,6 +33,7 @@ from simple_net import PolNet, VNet, PolNetLSTM, VNetLSTM
 import mocca_envs
 import pybullet_envs
 import roboschool
+import envs
 
 
 class Trainer(object):
@@ -84,7 +85,9 @@ class Trainer(object):
             env_id = auto_tune_env(env_id, self.env_kwargs)
         env = GymEnv(
             env_id,
-            # log_dir=os.path.join(self.args.log_dir, "movie"),
+            log_dir=os.path.join(self.args.load_path, "movie")
+            if self.args.render
+            else None,
             record_video=self.args.record,
         )
         env.env.seed(self.args.seed)
@@ -400,8 +403,8 @@ class Trainer(object):
                 # env.unwrapped.body_xyz = env.unwrapped.robot.body_xyz
                 # env.unwrapped.camera._p = env.unwrapped._p
                 # env.unwrapped.camera_adjust()#distance=5, yaw=0)
-            #            else:
-            #                env.render()#mode='human')
+            else:
+                env.render()
 
             action = self.pol.deterministic_ac_real(th.FloatTensor(obs))[0].reshape(-1)
             # print(action.shape)
