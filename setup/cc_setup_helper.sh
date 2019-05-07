@@ -12,7 +12,7 @@ git clone git@github.com:UBCMOCCA/mocca_envs.git  # might require authentication
 git clone git@github.com:DeepX-inc/machina.git
 
 ## create python virtualenv and 
-module load python/3.6
+module load python/3.7
 virtualenv venv
 source venv/bin/activate
 
@@ -34,7 +34,7 @@ popd
 pushd machina
 sed -i -- "s/'torch/#'torch/g" setup.py
 sed -i -- "s/gym==/gym>=/g" setup.py
-pip install pandas
+pip install pandas scipy
 python setup.py install
 popd
 
@@ -49,9 +49,9 @@ make
 make install
 export LDFLAGS="-Wl,-rpath='$LIBGIT2/lib',--enable-new-dtags $LDFLAGS"
 pip install pygit2
-tee -a ~/.zshrc <<EOF
-export LD_LIBRARY_PATH=$LIBGIT2/lib:\$LD_LIBRARY_PATH
-EOF
+# tee -a ~/.zshrc <<EOF
+# export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:$LIBGIT2/lib
+# EOF
 popd
 
 
@@ -65,7 +65,7 @@ pip install roboschool
 
 cd walking-benchmark
 ln -s ../roboschool/roboschool .
-cp ../venv/lib/python3.6/site-packages/roboschool/cpp_household.so roboschool
+cp ../venv/lib/python3.7/site-packages/roboschool/cpp_household.so roboschool
 
 
 sed -i -- 's/roboschool/#roboschool/g' requirements.txt
@@ -75,4 +75,5 @@ sed -i -- 's/pybullet/#pybullet/g' requirements.txt
 sed -i -- 's/torch/#torch/g' requirements.txt
 sed -i -- 's/ipdb/#ipdb/g' requirements.txt
 sed -i -- 's/pygit2/#pygit2/g' requirements.txt
+sed -r -i -- 's/(.*)MOCCA/#\1MOCCA/g' requirements.txt  # removes `mocca_envs`
 pip install -r requirements.txt
