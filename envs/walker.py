@@ -1,5 +1,6 @@
 from roboschool.gym_mujoco_walkers import RoboschoolWalker2d
 import torch as th
+import numpy as np
 import os
 import gym
 
@@ -34,6 +35,44 @@ class EarlyStopWalker(RoboschoolWalker2d):
         from OpenGL import GLU  # hacky fix
 
         super(EarlyStopWalker, self).render(*args, **kwargs)
+
+
+class EarlyStopWalker2(EarlyStopWalker):
+    vf_path = os.path.join(os.path.dirname(__file__), "data", "0.1_vf_max.pt")
+    state_norm_path = os.path.join(
+        os.path.dirname(__file__), "data", "0.1_env__state_max.pt"
+    )
+    threshold = 65
+
+
+class StateEarlyStopWalker(RoboschoolWalker2d):
+    states_path = os.path.join(os.path.dirname(__file__), "data", "walker_states.csv")
+    threshold = 40
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        with open(self.states_path, "rb") as dfile:
+            self.gstates = np.loadtxt(dfile, delimiter=",")
+        self.weights = np.ones(self.gstates.shape[1])
+        # self.weights[0] = 10
+
+    def distance(self, obs):
+        errors = (self.gstates - obs) ** 2 * self.weights
+        return errors.sum(axis=1).min()
+
+    def step(self, action):
+        obs, rew, done, info = super().step(action)
+        info["done"] = done
+        # done = False
+        info["distance"] = self.distance(obs)
+        if info["distance"] > self.threshold:
+            done = True
+        return obs, rew, done, info
+
+    def render(self, *args, **kwargs):
+        from OpenGL import GLU  # hacky fix
+
+        super().render(*args, **kwargs)
 
 
 def run():
