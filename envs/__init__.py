@@ -13,6 +13,12 @@ register(
 )
 
 register(
+    id="EarlyStopWalker2D-v3",
+    entry_point="envs.walker:EarlyStopWalker3",
+    max_episode_steps=1000,
+)
+
+register(
     id="StateEarlyStopWalker2D-v0",
     entry_point="envs.walker:StateEarlyStopWalker",
     max_episode_steps=1000,

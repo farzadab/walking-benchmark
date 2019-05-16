@@ -70,8 +70,12 @@ class Trainer(object):
         if args.render:
             self.load_save(args.env, "last")
         else:
+            if hasattr(args, "load_path"):
+                self.load_save(args.env, "last")
+            else:
+                self.setup_nets()
+            self.setup_optims()
             self.setup_experiment()
-            self.setup_nets()
 
         # if args.cuda:
         #     self.nets.cuda()
@@ -202,8 +206,9 @@ class Trainer(object):
         self.pol = policy
         self.vf = vf
 
-        self.optim_pol = th.optim.Adam(pol_net.parameters(), self.args.pol_lr)
-        self.optim_vf = th.optim.Adam(vf_net.parameters(), self.args.vf_lr)
+    def setup_optims(self):
+        self.optim_pol = th.optim.Adam(self.pol.net.parameters(), self.args.pol_lr)
+        self.optim_vf = th.optim.Adam(self.vf.net.parameters(), self.args.vf_lr)
         self.scheduler_pol = ExponentialLR(self.optim_pol, self.args.lr_decay_gamma)
         self.scheduler_vf = ExponentialLR(self.optim_vf, self.args.lr_decay_gamma)
 

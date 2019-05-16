@@ -45,6 +45,14 @@ class EarlyStopWalker2(EarlyStopWalker):
     threshold = 65
 
 
+class EarlyStopWalker3(EarlyStopWalker):
+    vf_path = os.path.join(os.path.dirname(__file__), "data", "vf_progress.pt")
+    state_norm_path = os.path.join(
+        os.path.dirname(__file__), "data", "env__state_progress.pt"
+    )
+    threshold = 0  # TODO: tune
+
+
 class StateEarlyStopWalker(RoboschoolWalker2d):
     states_path = os.path.join(os.path.dirname(__file__), "data", "walker_states.csv")
     threshold = 40
@@ -76,15 +84,16 @@ class StateEarlyStopWalker(RoboschoolWalker2d):
 
 
 def run():
-    env = gym.make("EarlyStopWalker2D-v0")
+    env = gym.make("EarlyStopWalker2D-v3")
     obs = env.reset()
 
     while True:
         env.render()
         obs, rew, done, info = env.step(env.action_space.sample())
         if done:
+            bstate = env.unwrapped.state_value(obs)
             obs = env.reset()
-            print(info["done"], env.unwrapped.state_value(obs))
+            print(info["done"], bstate, '  new ->', env.unwrapped.state_value(obs))
 
 
 if __name__ == "__main__":
