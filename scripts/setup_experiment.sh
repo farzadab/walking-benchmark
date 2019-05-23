@@ -31,12 +31,11 @@ cat > $log_path/run_script.sh <<EOF
 #SBATCH --array=1-$num_replicates
 module load singularity/3.2
 cd `pwd`    # run this from the walking-benchmark folder
-cd ..       # go back to the parent dir, i.e. cproj
 command="python -m main --log_dir $log_path/\$SLURM_ARRAY_TASK_ID \
     --seed \$SLURM_ARRAY_TASK_ID \
     --load_path $log_path \
     --num_processes $num_procs --name $name--run\$SLURM_ARRAY_TASK_ID"
-singularity exec -B /home -B /project -B /scratch imgwalking.sif bash -c "cd walking-benchmark && $command"
+singularity exec -B /home -B /project -B /scratch imgwalking.sif bash -c "$command"
 EOF
 
 cd $log_path
