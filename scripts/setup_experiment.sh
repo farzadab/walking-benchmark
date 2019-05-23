@@ -35,7 +35,7 @@ command="python -m main --log_dir $log_path/\$SLURM_ARRAY_TASK_ID \
     --seed \$SLURM_ARRAY_TASK_ID \
     --load_path $log_path \
     --num_processes $num_procs --name $name--run\$SLURM_ARRAY_TASK_ID"
-singularity exec -B /home -B /project -B /scratch imgwalking.sif bash -c "$command"
+singularity exec -B /home -B /project -B /scratch ../imgwalking.sif bash -c "\$command"
 EOF
 
 cd $log_path
