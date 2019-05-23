@@ -39,19 +39,15 @@ class Args(object):
 class ArgsFromFile(object):
     configs_fname = "configs.yaml"
 
-    def __init__(self, filename):
+    def __init__(self):
         # TODO: fix required
         # 1. get the command-line arguments
         cmargs = Args().parse()
 
         # 2. load the default configs file
-        self.load_configs(filename)
+        self.load_configs(os.path.join(cmargs.configs_path, self.configs_fname))
 
-        # 3. load the configs file if present
-        if cmargs.load_path:
-            self.load_configs(os.path.join(cmargs.load_path, self.configs_fname))
-
-        # 4. apply the command-line arguments
+        # 3. re-apply the command-line arguments
         for k, v in vars(cmargs).items():
             if v is not None:
                 self.__dict__[k] = v
@@ -96,6 +92,11 @@ _DEFAULT_ARGS = {
     "log_dir": {"type": str},
     "load_interval": {"type": int},
     "load_path": {"type": str, "help": "Just runs a previously saved model."},
+    "configs_path": {
+        "type": str,
+        "default": ".",
+        "help": "Path to the directory containing the `configs.yaml` file",
+    },
     # model parameters
     "rnn": {"type": str2bool},
     "data_parallel": {"type": str2bool},

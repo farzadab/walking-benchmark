@@ -37,8 +37,6 @@ import envs
 
 
 class Trainer(object):
-    config_filename = "configs.yaml"
-
     def __init__(self, args=None):
         self.env = None
         self.sampler = None
@@ -47,7 +45,7 @@ class Trainer(object):
         self.pol = None
 
         if args is None:
-            args = ArgsFromFile(self.config_filename)
+            args = ArgsFromFile()
         self.args = args
 
         self.env_kwargs = copy.deepcopy(getattr(self.args, "env_kwargs", {}))
@@ -386,8 +384,8 @@ class Trainer(object):
         if bullet:
             env.render()  # mode='human')
 
-        if "Roboschool" in self.args.env:
-            from OpenGL import GLU
+        #    if "Roboschool" in self.args.env:
+        #        from OpenGL import GLU
 
         total_reward = 0
 
