@@ -61,7 +61,8 @@ def main():
 
     for i, path in enumerate(args.load_paths):
         print("Loading ... ", path)
-        df = pd.read_csv(os.path.join(path, "progress.csv"))
+        filename = "evaluate.csv" if args.final else "progress.csv"
+        df = pd.read_csv(os.path.join(path, filename))
         for j, column in enumerate(args.columns):
             if args.final:
                 y = df[column][-1:].item()
