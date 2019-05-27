@@ -15,6 +15,7 @@ from utils.argparser import ArgsFromFile
 from utils.logs import LogMaster
 from utils.envs import auto_tune_env
 from utils.normalization import NormalizedEnv
+from utils import inf_range
 
 
 from machina.algos import ppo_clip
@@ -65,7 +66,7 @@ class Trainer(object):
 
         self.setup_env()
 
-        if args.render:
+        if args.render or args.evaluate:
             self.load_save(args.env, "last")
         else:
             if hasattr(args, "load_path"):
@@ -372,54 +373,52 @@ class Trainer(object):
             fpath = os.path.join(save_path, mname + ext)
             th.save(model, fpath)
 
-    def render(self):
+    def evaluate(self):
         # use the env at the end of the curriculum
         self.curriculum_handler(1)
 
         print("current log stds:", self.pol.net.log_std_param)
         env = self.env
-        done = True
 
         bullet = "Bullet" in self.args.env
-        if bullet:
+        if bullet and self.args.render:
             env.render()  # mode='human')
 
         #    if "Roboschool" in self.args.env:
         #        from OpenGL import GLU
 
-        total_reward = 0
+        rets = []
 
-        # import ipdb
-        # ipdb.set_trace()
+        for _ in range(self.args.eval_epis):
+            obs = env.reset()
+            total_reward = 0
 
-        while True:
-            if done:
-                print(total_reward)
-                obs = env.reset()
-                total_reward = 0
-
-            if bullet:
-                # TODO fix this hack: the pybullet code is broken :|
-                env.unwrapped._p.resetDebugVisualizerCamera(
-                    5, 0, -20, env.unwrapped.robot.body_xyz
+            for _ in inf_range():
+                action = self.pol.deterministic_ac_real(th.FloatTensor(obs))[0].reshape(
+                    -1
                 )
-                # env.unwrapped.body_xyz = env.unwrapped.robot.body_xyz
-                # env.unwrapped.camera._p = env.unwrapped._p
-                # env.unwrapped.camera_adjust()#distance=5, yaw=0)
-            else:
-                env.render()
+                obs, reward, done, info = env.step(action)
+                total_reward += reward  # info["ProgressRew"]
 
-            action = self.pol.deterministic_ac_real(th.FloatTensor(obs))[0].reshape(-1)
-            # print(action.shape)
-            # print(action)
-            obs, reward, done, info = env.step(action)
-            total_reward += reward  # info["ProgressRew"]
+                if self.args.render:
+                    env.render()
+                if done:
+                    break
+
+            print("return: ", total_reward)
+            rets.append(total_reward)
+
+        print("mean return: ", total_reward)
+        with open(os.path.join(self.args.load_path, 'evaluate.csv'), 'w') as csvfile:
+            csvfile.write("RewardAverage\n")
+            csvfile.write("%.2f\n" % np.mean(rets))
+        
 
 
 def main():
     trainer = Trainer()
-    if trainer.args.render:
-        trainer.render()
+    if trainer.args.render or trainer.args.evaluate:
+        trainer.evaluate()
     else:
         trainer.train()
 
