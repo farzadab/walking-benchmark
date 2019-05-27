@@ -410,7 +410,7 @@ class Trainer(object):
                     break
 
             print("return: ", sum_rew)
-            for k, v in sum_rew:
+            for k, v in sum_rew.items():
                 rews[k] = rews.get(k, []) + [v]
 
         with open(os.path.join(self.args.load_path, "evaluate.csv"), "w") as csvfile:
