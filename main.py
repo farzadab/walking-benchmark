@@ -15,7 +15,7 @@ from utils.argparser import ArgsFromFile
 from utils.logs import LogMaster
 from utils.envs import auto_tune_env
 from utils.normalization import NormalizedEnv
-from utils import inf_range
+from utils import infrange
 
 
 from machina.algos import ppo_clip
@@ -393,7 +393,7 @@ class Trainer(object):
             obs = env.reset()
             total_reward = 0
 
-            for _ in inf_range():
+            for _ in infrange():
                 action = self.pol.deterministic_ac_real(th.FloatTensor(obs))[0].reshape(
                     -1
                 )
