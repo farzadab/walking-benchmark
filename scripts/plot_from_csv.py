@@ -7,7 +7,7 @@ import csv
 import re
 import os
 
-from utils.plots import Plot, LinePlot, plt
+from utils.plots import Plot, LinePlot, plt, ScatterPlot
 from utils.argparser import str2bool
 
 
@@ -15,11 +15,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--load_paths", type=str, nargs="+")
     parser.add_argument("--columns", type=str, nargs="+")
+    parser.add_argument("--row", type=str, default="TotalSteps")
     parser.add_argument("--alpha", type=float, default=0.9)
     parser.add_argument("--smoothing", type=float, default=0)
     parser.add_argument("--log_scale", type=str2bool, default=False)
     parser.add_argument("--legend", type=str2bool, default=True)
     parser.add_argument("--name_regex", type=str, default="")
+    parser.add_argument("--final", type=str2bool, default=False)
     args = parser.parse_args()
 
     N = len(args.columns)
@@ -30,16 +32,19 @@ def main():
     plot = Plot(nrows=nrows, ncols=math.ceil(N / nrows), title=title)
     plots = []
     for column in args.columns:
-        plots.append(
-            LinePlot(
-                parent=plot,
-                ylabel=column,
-                xlabel="TotalSteps",
-                ylog_scale=args.log_scale,
-                alpha=args.alpha,
-                num_scatters=len(args.load_paths),
+        if args.final:
+            plots.append(ScatterPlot(parent=plot, ylabel=column, xlabel=args.row))
+        else:
+            plots.append(
+                LinePlot(
+                    parent=plot,
+                    ylabel=column,
+                    xlabel=args.row,
+                    ylog_scale=args.log_scale,
+                    alpha=args.alpha,
+                    num_scatters=len(args.load_paths),
+                )
             )
-        )
 
     if args.name_regex:
         legends = [re.findall(args.name_regex, path)[0] for path in args.load_paths]
@@ -58,9 +63,14 @@ def main():
         print("Loading ... ", path)
         df = pd.read_csv(os.path.join(path, "progress.csv"))
         for j, column in enumerate(args.columns):
-            if args.smoothing > 0.1:
-                df[column] = gaussian_filter1d(df[column], sigma=args.smoothing)
-            plots[j].update(df[["TotalStep", column]].values, line_num=i)
+            if args.final:
+                y = df[column][-1:].item()
+                x = float(legends[i])
+                plots[j].add_point([x, y])
+            else:
+                if args.smoothing > 0.1:
+                    df[column] = gaussian_filter1d(df[column], sigma=args.smoothing)
+                plots[j].update(df[[args.row, column]].values, line_num=i)
 
     plt.ioff()
     plt.show()

@@ -18,6 +18,7 @@ import numpy as np
 import time
 
 plt.ion()
+matplotlib.use("TkAgg", warn=False, force=True)
 
 
 class Plot(object):
@@ -25,6 +26,7 @@ class Plot(object):
         self.fig = None
         self.nrows = nrows
         self.ncols = ncols
+
         if parent is None:
             self.parent = self
             # TODO: make up a name
@@ -111,7 +113,7 @@ class LinePlot(Plot):
                 "Not enough colors for plotting: the same color may be re-used"
             )
         if ylog_scale:
-            self.subplot.set_yscale('log')
+            self.subplot.set_yscale("log")
         self.sc = [
             self.subplot.plot(
                 [], [], plot_type, color=self.COLORS[i % len(self.COLORS)], alpha=alpha
@@ -130,6 +132,8 @@ class LinePlot(Plot):
     def add_point(self, x, y, line_num=0, redraw=True):
         xs = np.append(self.sc[line_num].get_xdata(), [x])
         ys = np.append(self.sc[line_num].get_ydata(), [y])
+        # xs = self.sc[line_num].get_xdata()
+        # ys = self.sc[line_num].get_ydata()
         self.sc[line_num].set_xdata(xs)
         self.sc[line_num].set_ydata(ys)
         self.xlim = [min(self.xlim[0], x), max(self.xlim[1], x)]
@@ -161,9 +165,12 @@ class ScatterPlot(Plot):
     def __init__(
         self,
         value_range=[-1, 1],
-        xlim=[-1, 1],
-        ylim=[-1, 1],
+        xlim=[np.inf, -np.inf],
+        ylim=[np.inf, -np.inf],
         palette="seismic",
+        title="",
+        xlabel="",
+        ylabel="",
         *args,
         **kwargs
     ):
@@ -175,8 +182,13 @@ class ScatterPlot(Plot):
         self.sc = self.subplot.scatter(
             x=[], y=[], c=[], norm=norm, cmap=cmap, alpha=0.8, edgecolors="none"
         )
-        self.subplot.set_xlim(*xlim)
-        self.subplot.set_ylim(*ylim)
+        self.xlim = xlim
+        self.ylim = ylim
+        self.subplot.set_title(title)
+        self.subplot.set_xlabel(xlabel)
+        self.subplot.set_ylabel(ylabel)
+        # self.subplot.set_xlim(*xlim)
+        # self.subplot.set_ylim(*ylim)
         self._redraw()
 
     def update(self, points, values):
@@ -187,6 +199,21 @@ class ScatterPlot(Plot):
         # self.sc.set_offsets(np.c_[x,y])
         self.sc.set_offsets(points)
         self.sc.set_array(values)
+        self._redraw()
+
+    def add_point(self, point, value=1):
+        self.sc.set_offsets(
+            np.concatenate([self.sc.get_offsets(), np.array(point, ndmin=2)])
+        )
+        self.sc.set_array(
+            np.concatenate([self.sc.get_array(), np.array(value, ndmin=1)])
+        )
+        self.xlim = [min(self.xlim[0], point[0]), max(self.xlim[1], point[0])]
+        self.ylim = [min(self.ylim[0], point[1]), max(self.ylim[1], point[1])]
+        xextra = max(2, self.xlim[1] - self.xlim[0]) / 10
+        yextra = max(2, self.ylim[1] - self.ylim[0]) / 10
+        self.subplot.set_xlim(self.xlim[0] - xextra, self.xlim[1] + xextra)
+        self.subplot.set_ylim(self.ylim[0] - yextra, self.ylim[1] + yextra)
         self._redraw()
 
 
@@ -255,9 +282,10 @@ class QuiverPlot(Plot):
 
 
 if __name__ == "__main__":
-    plot = Plot(1, 2)
+    plot = Plot(1, 3)
     sc = ScatterPlot(parent=plot)
     qv = QuiverPlot(parent=plot)
+    ln = LinePlot(parent=plot, num_scatters=10)
     n = 100
     for _ in range(100):
         x = np.random.rand(n) * 2 - 1
@@ -267,4 +295,5 @@ if __name__ == "__main__":
         sc.update(xy, c)
         dirs = np.random.rand(n, 2)
         qv.update(xy, dirs)
+        ln.update(np.random.rand(n, 2))
         time.sleep(0.2)
