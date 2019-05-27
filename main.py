@@ -402,7 +402,7 @@ class Trainer(object):
 
                 for k, v in info.items():
                     if "rew" in k.lower():
-                        sum_rew.update(k, sum_rew.get(k, 0) + v)
+                        sum_rew[k] = sum_rew.get(k, 0) + v
 
                 if self.args.render:
                     env.render()
@@ -411,7 +411,7 @@ class Trainer(object):
 
             print("return: ", sum_rew)
             for k, v in sum_rew:
-                rews.update(k, rews.get(k, []) + [v])
+                rews[k] = rews.get(k, []) + [v]
 
         with open(os.path.join(self.args.load_path, "evaluate.csv"), "w") as csvfile:
             print("mean return: ", np.mean(rews))
