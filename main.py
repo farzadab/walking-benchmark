@@ -414,11 +414,8 @@ class Trainer(object):
                 rews[k] = rews.get(k, []) + [v]
 
         with open(os.path.join(self.args.load_path, "evaluate.csv"), "w") as csvfile:
-            print("mean return: ", np.mean(rews))
-            csvfile.write(",".join(rews.keys()) + "\n")
-            csvfile.write(
-                ",".join(["Mean" + str(np.mean(rews[k])) for k in rews.keys()]) + "\n"
-            )
+            csvfile.write(",".join(["MeanEpi" + k for k in rews.keys()]) + "\n")
+            csvfile.write(",".join([str(np.mean(rews[k])) for k in rews.keys()]) + "\n")
 
 
 def main():

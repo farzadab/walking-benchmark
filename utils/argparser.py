@@ -44,8 +44,10 @@ class ArgsFromFile(object):
         # 1. get the command-line arguments
         cmargs = Args().parse()
 
+        configs_path = cmargs.configs_path or cmargs.load_path or "."
+
         # 2. load the default configs file
-        self.load_configs(os.path.join(cmargs.configs_path, self.configs_fname))
+        self.load_configs(os.path.join(configs_path, self.configs_fname))
 
         # 3. re-apply the command-line arguments
         for k, v in vars(cmargs).items():
@@ -94,7 +96,6 @@ _DEFAULT_ARGS = {
     "load_path": {"type": str, "help": "Just runs a previously saved model."},
     "configs_path": {
         "type": str,
-        "default": ".",
         "help": "Path to the directory containing the `configs.yaml` file",
     },
     # model parameters
