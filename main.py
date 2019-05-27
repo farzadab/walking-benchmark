@@ -387,32 +387,38 @@ class Trainer(object):
         #    if "Roboschool" in self.args.env:
         #        from OpenGL import GLU
 
-        rets = []
+        rews = {}
 
         for _ in range(self.args.eval_epis):
             obs = env.reset()
-            total_reward = 0
+            sum_rew = {"Rew": 0}
 
             for _ in infrange():
                 action = self.pol.deterministic_ac_real(th.FloatTensor(obs))[0].reshape(
                     -1
                 )
                 obs, reward, done, info = env.step(action)
-                total_reward += reward  # info["ProgressRew"]
+                sum_rew["Rew"] += reward  # info["ProgressRew"]
+
+                for k, v in info.items():
+                    if "rew" in k.lower():
+                        sum_rew.update(k, sum_rew.get(k, 0) + v)
 
                 if self.args.render:
                     env.render()
                 if done:
                     break
 
-            print("return: ", total_reward)
-            rets.append(total_reward)
+            print("return: ", sum_rew)
+            for k, v in sum_rew:
+                rews.update(k, rews.get(k, []) + [v])
 
-        print("mean return: ", total_reward)
-        with open(os.path.join(self.args.load_path, 'evaluate.csv'), 'w') as csvfile:
-            csvfile.write("RewardAverage\n")
-            csvfile.write("%.2f\n" % np.mean(rets))
-        
+        with open(os.path.join(self.args.load_path, "evaluate.csv"), "w") as csvfile:
+            print("mean return: ", np.mean(rews))
+            csvfile.write(",".join(rews.keys()) + "\n")
+            csvfile.write(
+                ",".join(["Mean" + str(np.mean(rews[k])) for k in rews.keys()]) + "\n"
+            )
 
 
 def main():
