@@ -137,7 +137,7 @@ class Trainer(object):
 
     def handle_env_curr(self, c_level):
         curric = self.args.curriculum
-        if hasattr(curric, "env_kwargs"):
+        if "env_kwargs" in curric:
             curric_kwargs = dict(
                 [
                     # TODO: enable more than two end-points for the linear interpolation
