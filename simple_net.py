@@ -92,6 +92,93 @@ class PolNet(nn.Module):
                 return torch.softmax(self.output_layer(h), dim=-1)
 
 
+class PolNetB(nn.Module):
+    """
+    Based on PolNet, need to keep PolNet for backward compatibility
+    """
+
+    def __init__(
+        self,
+        observation_space,
+        action_space,
+        hidden_size=256,
+        num_layers=3,
+        varying_std=False,
+        tanh_finish=False,
+        log_std=-1,
+        deterministic=False,
+    ):
+        super(PolNetB, self).__init__()
+
+        self.deterministic = deterministic
+        self.tanh_finish = tanh_finish
+
+        if isinstance(action_space, gym.spaces.Box):
+            self.discrete = False
+        else:
+            self.discrete = True
+            if isinstance(action_space, gym.spaces.MultiDiscrete):
+                self.multi = True
+            else:
+                self.multi = False
+
+        self.fcs = []
+        last_layer_size = observation_space.shape[0]
+        for _ in range(num_layers - 1):
+            self.fcs.append(nn.Linear(last_layer_size, hidden_size))
+            self.fcs[-1].apply(weight_init)
+            last_layer_size = hidden_size
+
+        if not self.discrete:
+            self.mean_layer = nn.Linear(last_layer_size, action_space.shape[0])
+            if not self.deterministic:
+                if varying_std:
+                    self.log_std_param = nn.Parameter(
+                        torch.randn(action_space.shape[0]) * 1e-10 + log_std
+                    )
+                else:
+                    self.log_std_param = log_std * torch.ones(action_space.shape[0])
+            self.mean_layer.apply(mini_weight_init)
+        else:
+            if self.multi:
+                self.output_layers = nn.ModuleList(
+                    [nn.Linear(last_layer_size, vec) for vec in action_space.nvec]
+                )
+                list(map(lambda x: x.apply(mini_weight_init), self.output_layers))
+            else:
+                self.output_layer = nn.Linear(last_layer_size, action_space.n)
+                self.output_layer.apply(mini_weight_init)
+
+    def reset_log_std(self, log_std):
+        self.log_std_param[:] = log_std
+
+    def forward(self, ob):
+        h = ob
+        for fc in self.fcs:
+            h = F.relu(fc(h))
+
+        if not self.discrete:
+            mean = self.mean_layer(h)
+            if self.tanh_finish:
+                mean = torch.tanh(mean)
+            if not self.deterministic:
+                log_std = self.log_std_param.expand_as(mean)
+                return mean, log_std
+            else:
+                return mean
+        else:
+            if self.multi:
+                return torch.cat(
+                    [
+                        torch.softmax(ol(h), dim=-1).unsqueeze(-2)
+                        for ol in self.output_layers
+                    ],
+                    dim=-2,
+                )
+            else:
+                return torch.softmax(self.output_layer(h), dim=-1)
+
+
 class VNet(nn.Module):
     def __init__(self, observation_space, h1=200, h2=100):
         super(VNet, self).__init__()
@@ -103,6 +190,28 @@ class VNet(nn.Module):
     def forward(self, ob):
         h = F.relu(self.fc1(ob))
         h = F.relu(self.fc2(h))
+        return self.output_layer(h)
+
+
+class VNetB(nn.Module):
+    """
+    Based on VNet, need to keep VNet for backward compatibility
+    """
+
+    def __init__(self, observation_space, hidden_size=256, num_layers=3):
+        super(VNetB, self).__init__()
+        self.fcs = []
+        last_layer_size = observation_space.shape[0]
+        for _ in range(num_layers - 1):
+            self.fcs.append(nn.Linear(last_layer_size, hidden_size))
+            last_layer_size = hidden_size
+        self.output_layer = nn.Linear(last_layer_size, 1)
+        self.apply(weight_init)
+
+    def forward(self, ob):
+        h = ob
+        for fc in self.fcs:
+            h = F.relu(fc(h))
         return self.output_layer(h)
 
 

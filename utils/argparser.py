@@ -104,6 +104,7 @@ _DEFAULT_ARGS = {
     "model_type": {"type": str},
     "num_layers": {"type": int},
     "hidden_size": {"type": int},
+    "net_version": {"type": int, "default": 1},
     # training parameters
     "num_steps": {"type": int},
     "num_total_frames": {"type": int},

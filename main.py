@@ -2,6 +2,7 @@ import os
 import glob
 import copy
 import time
+import random
 import gym
 import warnings
 import multiprocessing
@@ -28,7 +29,7 @@ from machina.vfuncs import DeterministicSVfunc
 from machina.envs import GymEnv, C2DEnv
 from machina import logger
 
-from simple_net import PolNet, VNet, PolNetLSTM, VNetLSTM
+from simple_net import PolNet, PolNetB, VNet, VNetB, PolNetLSTM, VNetLSTM
 
 
 import mocca_envs
@@ -58,11 +59,9 @@ class Trainer(object):
             int(args.num_total_frames) // args.num_steps // args.num_processes
         )
 
+        self.seed_torch(args.seed)
+        
         th.set_num_threads(args.num_processes)
-
-        th.manual_seed(args.seed)
-        if args.cuda:
-            th.cuda.manual_seed(args.seed)
 
         self.setup_env()
 
@@ -78,6 +77,18 @@ class Trainer(object):
 
         # if args.cuda:
         #     self.nets.cuda()
+
+    def seed_torch(self, seed):
+        random.seed(seed)
+        os.environ["PYTHONHASHSEED"] = str(seed)
+        np.random.seed(seed)
+        th.manual_seed(seed)
+        if self.args.cuda:
+            th.cuda.manual_seed(seed)
+            th.cuda.manual_seed(seed)
+            th.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
+            th.backends.cudnn.benchmark = False
+            th.backends.cudnn.deterministic = True
 
     def setup_env(self):
         """
@@ -168,8 +179,18 @@ class Trainer(object):
 
         if self.args.rnn:
             pol_net = PolNetLSTM(ob_space, ac_space, h_size=256, cell_size=256)
-        else:
+        elif self.args.net_version == 1:
             pol_net = PolNet(ob_space, ac_space, log_std=self.args.log_stdev)
+        else:
+            pol_net = PolNetB(
+                ob_space,
+                ac_space,
+                hidden_size=self.args.hidden_size,
+                num_layers=self.args.num_layers,
+                varying_std=self.args.varying_std,
+                tanh_finish=self.args.tanh_finish,
+                log_std=self.args.log_stdev,
+            )
 
         if isinstance(ac_space, gym.spaces.Box):
             pol_class = GaussianPol
@@ -191,8 +212,14 @@ class Trainer(object):
 
         if self.args.rnn:
             vf_net = VNetLSTM(ob_space, h_size=256, cell_size=256)
-        else:
+        elif self.args.net_version == 1:
             vf_net = VNet(ob_space)
+        else:
+            vf_net = VNetB(
+                ob_space,
+                hidden_size=self.args.hidden_size,
+                num_layers=self.args.num_layers,
+            )
 
         vf = DeterministicSVfunc(
             ob_space,

@@ -16,7 +16,7 @@ RUN wget https://files.pythonhosted.org/packages/78/d2/42d6658f3311e60729dd38a58
     tar -xf pybullet-2.4.9.tar.gz && \
     rm pybullet-2.4.9.tar.gz && \
     cd pybullet-2.4.9 && \
-    sed -i -- 's/2\*multiprocessing.cpu_count()/10/g' setup.py && \
+    sed -i -- 's/2\*multiprocessing.cpu_count()/4/g' setup.py && \
     python setup.py install && \
     cd .. && \
     rm -r pybullet-2.4.9

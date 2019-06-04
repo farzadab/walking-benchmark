@@ -15,7 +15,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--load_paths", type=str, nargs="+")
     parser.add_argument("--columns", type=str, nargs="+")
-    parser.add_argument("--row", type=str, default="TotalSteps")
+    parser.add_argument("--row", type=str, default="TotalStep")
     parser.add_argument("--alpha", type=float, default=0.9)
     parser.add_argument("--smoothing", type=float, default=0)
     parser.add_argument("--log_scale", type=str2bool, default=False)

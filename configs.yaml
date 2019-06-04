@@ -17,7 +17,11 @@ gae_lambda: 0.95
 use_peb: True
 
 num_layers: 3
-hidden_size: 64
+hidden_size: 256
+net_version: 2
+tanh_finish: true    # applies a tanh to the output of the action
+                     # only works in net version 2+
+varying_std: false
 log_stdev: -1
 lr: 0.0003
 clip_eps: 0.2
@@ -35,7 +39,7 @@ l2_reg_w: 0.05
 
 max_grad_norm: 1
 
-num_steps: 900
+num_steps: 1000
 num_total_frames: 6000000
 num_processes: 10 # TODO: multiprocessing.cpu_count() 
 
