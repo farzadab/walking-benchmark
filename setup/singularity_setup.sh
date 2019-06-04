@@ -8,11 +8,13 @@
 # docker build --tag=benchmark . --build-arg pass="*****"  # TODO: password
 # docker tag benchmark farzadab/walking-benchmark
 # docker push farzadab/walking-benchmark
+## or 
+# sudo singularity build --writable imgwalking.sif singularity.recipe
 ##################################################################################
 
 # load singularity and pull from Docker Hub
 module load singularity/3.2
-singularity pull img_walking.img docker://farzadab/walking-benchmark
+singularity pull imgwalking.sif docker://farzadab/walking-benchmark
 
 # pulling Git repos: requires authentication
 git clone git@github.com:farzadab/walking-benchmark.git
@@ -22,9 +24,9 @@ git clone git@github.com:DeepX-inc/machina.git
 
 # post setup (roboschool libraries)
 singularity exec -B /home -B /project -B /scratch \
-    img_walking.sif walking-benchmark/setup/singularity_post_setup.sh
+    imgwalking.sif walking-benchmark/setup/singularity_post_setup.sh
 
 
 #### usage: interactive shell #######################################
-# singularity shell -B /home -B /project -B /scratch img_walking.sif
+# singularity shell -B /home -B /project -B /scratch imgwalking.sif
 #####################################################################
