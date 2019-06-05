@@ -60,7 +60,7 @@ class Trainer(object):
         )
 
         self.seed_torch(args.seed)
-        
+
         th.set_num_threads(args.num_processes)
 
         self.setup_env()
@@ -100,7 +100,7 @@ class Trainer(object):
         env = GymEnv(
             env_id,
             log_dir=os.path.join(self.args.load_path, "movie")
-            if self.args.render
+            if self.args.record
             else None,
             record_video=self.args.record,
         )
@@ -401,6 +401,9 @@ class Trainer(object):
             th.save(model, fpath)
 
     def evaluate(self):
+        from sklearn.decomposition import PCA
+        import ipdb
+
         # use the env at the end of the curriculum
         self.curriculum_handler(1)
 
@@ -415,15 +418,52 @@ class Trainer(object):
         #        from OpenGL import GLU
 
         rews = {}
+        actions = []
+        res_actions = []
+        pca = None
 
-        for _ in range(self.args.eval_epis):
+        for i_epi in range(self.args.eval_epis):
+            if i_epi >= 10:
+                env.unwrapped.residual_control = False
+                while True:
+                    try:
+                        n = int(input("N="))
+                        break
+                    except:
+                        continue
+                pca = PCA(n_components=n)
+                pca.fit(np.array(actions) + res_actions)
+                print(pca.components_)
+                print(pca.explained_variance_ratio_)
+                hapity = pca.transform
+                pca.transform = lambda x: hapity(
+                    x
+                    + env.unwrapped.base_angles()[
+                        env.unwrapped.robot.powered_joint_inds
+                    ]
+                )
+
             obs = env.reset()
             sum_rew = {"Rew": 0}
 
-            for _ in infrange():
+            for _ in range(100):  # infrange():
                 action = self.pol.deterministic_ac_real(th.FloatTensor(obs))[0].reshape(
                     -1
                 )
+                # action = self.pol.forward(th.FloatTensor(obs))[0].reshape(-1)
+                if pca:
+                    # print(pca.score(action.reshape(1, -1)))
+                    action = pca.inverse_transform(
+                        pca.transform(action.reshape(1, -1))
+                    )[0]
+                else:
+                    actions.append(action)
+                    res_actions.append(
+                        env.unwrapped.base_angles()[
+                            env.unwrapped.robot.powered_joint_inds
+                        ]
+                    )
+
                 obs, reward, done, info = env.step(action)
                 sum_rew["Rew"] += reward  # info["ProgressRew"]
 
@@ -431,7 +471,7 @@ class Trainer(object):
                     if "rew" in k.lower():
                         sum_rew[k] = sum_rew.get(k, 0) + v
 
-                if self.args.render:
+                if self.args.render and pca is not None:
                     env.render()
                 if done:
                     break
@@ -439,6 +479,15 @@ class Trainer(object):
             print("return: ", sum_rew)
             for k, v in sum_rew.items():
                 rews[k] = rews.get(k, []) + [v]
+
+        # actions = np.array(actions)
+        # # import ipdb
+
+        # pca = PCA(n_components=6)
+        # pca.fit(actions)
+        # print(pca.get_params())
+
+        # ipdb.set_trace()
 
         with open(os.path.join(self.args.load_path, "evaluate.csv"), "w") as csvfile:
             csvfile.write(",".join(["MeanEpi" + k for k in rews.keys()]) + "\n")
