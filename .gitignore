@@ -1,3 +1,6 @@
+
+policy/
+torque/
 machina
 mocca_envs
 roboschool
@@ -5,6 +8,11 @@ garbage/
 logs/
 runs/
 .vscode
+
+# Singularity images
+*.img
+*.simg
+*.sif
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

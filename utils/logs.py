@@ -55,7 +55,7 @@ class LogMaster(object):
             #                self.args.desc = input('%s### Please provide a description for the experiment: %s' % (Fore.RED, Style.RESET_ALL))
 
             writer = tensorboardX.SummaryWriter(
-                log_dir=self.log_dir, comment="-" + self.args.name
+                logdir=self.log_dir, comment="-" + self.args.name
             )
         else:
             writer = ConsoleWriter()

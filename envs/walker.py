@@ -50,7 +50,7 @@ class EarlyStopWalker3(EarlyStopWalker):
     state_norm_path = os.path.join(
         os.path.dirname(__file__), "data", "env__state_progress.pt"
     )
-    threshold = 0  # TODO: tune
+    threshold = 10  # TODO: tune
 
 
 class StateEarlyStopWalker(RoboschoolWalker2d):
