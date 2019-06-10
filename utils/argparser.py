@@ -39,17 +39,20 @@ class Args(object):
 class ArgsFromFile(object):
     configs_fname = "configs.yaml"
 
-    def __init__(self):
-        # TODO: fix required
-        # 1. get the command-line arguments
+    def __init__(self, defaults):
+        # 1. defaults:
+        for k, v in defaults.items():
+            self.__dict__[k] = v
+
+        # 2. get the command-line arguments
         cmargs = Args().parse()
 
         configs_path = cmargs.configs_path or cmargs.load_path or "."
 
-        # 2. load the default configs file
+        # 3. load the default configs file
         self.load_configs(os.path.join(configs_path, self.configs_fname))
 
-        # 3. re-apply the command-line arguments
+        # 4. re-apply the command-line arguments
         for k, v in vars(cmargs).items():
             if v is not None:
                 self.__dict__[k] = v
@@ -104,7 +107,7 @@ _DEFAULT_ARGS = {
     "model_type": {"type": str},
     "num_layers": {"type": int},
     "hidden_size": {"type": int},
-    "net_version": {"type": int, "default": 1},
+    "net_version": {"type": int},
     # training parameters
     "num_steps": {"type": int},
     "num_total_frames": {"type": int},
@@ -112,11 +115,12 @@ _DEFAULT_ARGS = {
     "lr": {"type": float},
     "pol_lr": {"type": float},
     "vf_lr": {"type": float},
-    "lr_decay_gamma": {"type": float, "default": 0.992},
+    "lr_decay_gamma": {"type": float},
     "weight_decay": {"type": float},
     "decay_gamma": {"type": float},
     "gae_lambda": {"type": float},
     "use_peb": {"type": str2bool},
+    "mirror_tuples": {"type": str2bool},
     # mixed pg
     "epoch_per_iter": {
         "type": int,
@@ -155,9 +159,9 @@ _DEFAULT_ARGS = {
     "render": {"type": str2bool, "help": "Renders the environment"},
     "store": {"type": str2bool},
     "record": {"type": str2bool},
-    "plot": {"type": str2bool, "default": True},
-    "evaluate": {"type": str2bool, "default": False},
-    "eval_epis": {"type": int, "default": 50},
+    "plot": {"type": str2bool},
+    "evaluate": {"type": str2bool},
+    "eval_epis": {"type": int},
     "ep_length": {"type": int},
     "new_action_prob": {"type": float},
     "max_action": {"type": float},

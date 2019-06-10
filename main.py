@@ -39,6 +39,15 @@ import envs
 
 
 class Trainer(object):
+    default_args = {
+        "net_version": 2,
+        "mirror_tuples": False,
+        "lr_decay_gamma": 0.992,
+        "plot": True,
+        "evaluate": False,
+        "eval_epis": 50,
+    }
+
     def __init__(self, args=None):
         self.env = None
         self.sampler = None
@@ -47,7 +56,7 @@ class Trainer(object):
         self.pol = None
 
         if args is None:
-            args = ArgsFromFile()
+            args = ArgsFromFile(self.default_args)
         self.args = args
 
         self.env_kwargs = copy.deepcopy(getattr(self.args, "env_kwargs", {}))
@@ -262,7 +271,7 @@ class Trainer(object):
         logger.add_tabular_output(score_file)
 
         mirror_function = None
-        if hasattr(self.env.unwrapped, "mirror_indices"):
+        if args.mirror_tuples and hasattr(self.env.unwrapped, "mirror_indices"):
             mirror_function = get_mirror_function(**self.env.unwrapped.mirror_indices)
 
         while args.num_total_frames > total_step:
