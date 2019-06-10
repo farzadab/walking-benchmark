@@ -35,6 +35,13 @@ def get_mirror_function(
     neg_obs_inds=[],
     neg_act_inds=[],
 ):
+    right_obs_inds = th.LongTensor(right_obs_inds)
+    left_obs_inds = th.LongTensor(left_obs_inds)
+    right_act_inds = th.LongTensor(right_act_inds)
+    left_act_inds = th.LongTensor(left_act_inds)
+    neg_obs_inds = th.LongTensor(neg_obs_inds)
+    neg_act_inds = th.LongTensor(neg_act_inds)
+
     def mirror_function(traj):
         ctraj = copy.deepcopy(traj)
 

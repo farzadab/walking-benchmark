@@ -262,7 +262,7 @@ class Trainer(object):
         logger.add_tabular_output(score_file)
 
         mirror_function = None
-        if hasattr("mirror_indices", self.env.unwrapped):
+        if hasattr(self.env.unwrapped, "mirror_indices"):
             mirror_function = get_mirror_function(**self.env.unwrapped.mirror_indices)
 
         while args.num_total_frames > total_step:
