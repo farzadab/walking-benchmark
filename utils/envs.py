@@ -1,3 +1,4 @@
+import torch as th
 import copy
 import gym.envs
 
@@ -24,3 +25,28 @@ def auto_tune_env(env_name, kwargs):
         )
 
     return new_id
+
+
+def get_mirror_function(
+    right_obs_inds,
+    left_obs_inds,
+    right_act_inds,
+    left_act_inds,
+    neg_obs_inds=[],
+    neg_act_inds=[],
+):
+    def mirror_function(traj):
+        ctraj = copy.deepcopy(traj)
+
+        def swap_lr(t, r, l):
+            t[:, th.cat((r, l))] = t[:, th.cat((l, r))]
+
+        ctraj.data_map["obs"][:, neg_obs_inds] *= -1
+        swap_lr(ctraj.data_map["obs"], right_obs_inds, left_obs_inds)
+
+        ctraj.data_map["obs"][:, neg_act_inds] *= -1
+        swap_lr(ctraj.data_map["obs"], right_act_inds, left_act_inds)
+
+        return ctraj
+
+    return mirror_function

@@ -14,7 +14,7 @@ from colorama import Fore, Style
 
 from utils.argparser import ArgsFromFile
 from utils.logs import LogMaster
-from utils.envs import auto_tune_env
+from utils.envs import auto_tune_env, get_mirror_function
 from utils.normalization import NormalizedEnv
 from utils import infrange
 
@@ -60,7 +60,7 @@ class Trainer(object):
         )
 
         self.seed_torch(args.seed)
-        
+
         th.set_num_threads(args.num_processes)
 
         self.setup_env()
@@ -261,6 +261,10 @@ class Trainer(object):
         score_file = os.path.join(self.logger.get_logdir(), "progress.csv")
         logger.add_tabular_output(score_file)
 
+        mirror_function = None
+        if hasattr("mirror_indices", self.env.unwrapped):
+            mirror_function = get_mirror_function(**self.env.unwrapped.mirror_indices)
+
         while args.num_total_frames > total_step:
             # setup the correct curriculum learning environment/parameters
             new_curriculum = self.curriculum_handler(total_step / args.num_total_frames)
@@ -281,16 +285,18 @@ class Trainer(object):
                 )
 
             with measure("train"):
-                with measure("register_epis"):
-                    traj = Traj()
-                    traj.add_epis(epis)
+                traj = Traj()
+                traj.add_epis(epis)
 
-                    traj = ef.compute_vs(traj, self.vf)
-                    traj = ef.compute_rets(traj, args.decay_gamma)
-                    traj = ef.compute_advs(traj, args.decay_gamma, args.gae_lambda)
-                    traj = ef.centerize_advs(traj)
-                    traj = ef.compute_h_masks(traj)
-                    traj.register_epis()
+                traj = ef.compute_vs(traj, self.vf)
+                traj = ef.compute_rets(traj, args.decay_gamma)
+                traj = ef.compute_advs(traj, args.decay_gamma, args.gae_lambda)
+                traj = ef.centerize_advs(traj)
+                traj = ef.compute_h_masks(traj)
+                traj.register_epis()
+
+                if mirror_function:
+                    traj.add_traj(mirror_function(traj))
 
                 # if args.data_parallel:
                 #     self.pol.dp_run = True
