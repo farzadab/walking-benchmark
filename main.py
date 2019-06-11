@@ -270,11 +270,20 @@ class Trainer(object):
         score_file = os.path.join(self.logger.get_logdir(), "progress.csv")
         logger.add_tabular_output(score_file)
 
+        num_total_frames = args.num_total_frames
+
         mirror_function = None
         if args.mirror_tuples and hasattr(self.env.unwrapped, "mirror_indices"):
             mirror_function = get_mirror_function(**self.env.unwrapped.mirror_indices)
+            num_total_frames *= 2
+            if not args.tanh_finish:
+                warnings.warn(
+                    "When `mirror_tuples` is `True`,"
+                    " `tanh_finish` should be set to `True` as well."
+                    " Otherwise there is a chance of the training blowing up."
+                )
 
-        while args.num_total_frames > total_step:
+        while num_total_frames > total_step:
             # setup the correct curriculum learning environment/parameters
             new_curriculum = self.curriculum_handler(total_step / args.num_total_frames)
 
