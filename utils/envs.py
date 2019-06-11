@@ -51,8 +51,8 @@ def get_mirror_function(
         ctraj.data_map["obs"][:, neg_obs_inds] *= -1
         swap_lr(ctraj.data_map["obs"], right_obs_inds, left_obs_inds)
 
-        ctraj.data_map["act"][:, neg_act_inds] *= -1
-        swap_lr(ctraj.data_map["act"], right_act_inds, left_act_inds)
+        ctraj.data_map["acs"][:, neg_act_inds] *= -1
+        swap_lr(ctraj.data_map["acs"], right_act_inds, left_act_inds)
 
         return ctraj
 
