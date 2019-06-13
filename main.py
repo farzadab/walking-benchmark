@@ -70,8 +70,6 @@ class Trainer(object):
 
         self.seed_torch(args.seed)
 
-        th.set_num_threads(args.num_processes)
-
         self.setup_env()
 
         if args.render or args.evaluate:
@@ -303,22 +301,23 @@ class Trainer(object):
                 )
 
             with measure("train"):
-                traj = Traj()
-                traj.add_epis(epis)
+                with measure("epis"):
+                    traj = Traj()
+                    traj.add_epis(epis)
 
-                traj = ef.compute_vs(traj, self.vf)
-                traj = ef.compute_rets(traj, args.decay_gamma)
-                traj = ef.compute_advs(traj, args.decay_gamma, args.gae_lambda)
-                traj = ef.centerize_advs(traj)
-                traj = ef.compute_h_masks(traj)
-                traj.register_epis()
+                    traj = ef.compute_vs(traj, self.vf)
+                    traj = ef.compute_rets(traj, args.decay_gamma)
+                    traj = ef.compute_advs(traj, args.decay_gamma, args.gae_lambda)
+                    traj = ef.centerize_advs(traj)
+                    traj = ef.compute_h_masks(traj)
+                    traj.register_epis()
 
-                if mirror_function:
-                    traj.add_traj(mirror_function(traj))
+                    if mirror_function:
+                        traj.add_traj(mirror_function(traj))
 
                 # if args.data_parallel:
                 #     self.pol.dp_run = True
-                #     vf.dp_run = True
+                #     self.vf.dp_run = True
 
                 result_dict = ppo_clip.train(
                     traj=traj,
@@ -334,7 +333,7 @@ class Trainer(object):
 
                 # if args.data_parallel:
                 #     self.pol.dp_run = False
-                #     vf.dp_run = False
+                #     self.vf.dp_run = False
 
             ## append the metrics to the `results_dict` (reported in the progress.csv)
             result_dict.update(self.get_extra_metrics(epis))

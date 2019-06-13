@@ -124,9 +124,10 @@ class PolNetB(nn.Module):
 
         self.fcs = []
         last_layer_size = observation_space.shape[0]
-        for _ in range(num_layers - 1):
+        for i in range(num_layers - 1):
             self.fcs.append(nn.Linear(last_layer_size, hidden_size))
-            self.fcs[-1].apply(weight_init)
+            self.add_module("layer%d" % i, self.fcs[i])
+            self.fcs[i].apply(weight_init)
             last_layer_size = hidden_size
 
         if not self.discrete:
@@ -202,8 +203,9 @@ class VNetB(nn.Module):
         super(VNetB, self).__init__()
         self.fcs = []
         last_layer_size = observation_space.shape[0]
-        for _ in range(num_layers - 1):
+        for i in range(num_layers - 1):
             self.fcs.append(nn.Linear(last_layer_size, hidden_size))
+            self.add_module("layer%d" % i, self.fcs[i])
             last_layer_size = hidden_size
         self.output_layer = nn.Linear(last_layer_size, 1)
         self.apply(weight_init)
