@@ -30,6 +30,7 @@ from machina.envs import GymEnv, C2DEnv
 from machina import logger
 
 from simple_net import PolNet, PolNetB, VNet, VNetB, PolNetLSTM, VNetLSTM
+from symmetric_net import SymmetricNet
 
 
 import mocca_envs
@@ -46,6 +47,7 @@ class Trainer(object):
         "plot": True,
         "evaluate": False,
         "eval_epis": 50,
+        "mirror": True,
     }
 
     def __init__(self, args=None):
@@ -184,7 +186,16 @@ class Trainer(object):
         ob_space = self.env.observation_space
         ac_space = self.env.action_space
 
-        if self.args.rnn:
+        if self.args.mirror:
+            pol_net = SymmetricNet(
+                *self.env.unwrapped.mirror_sizes,
+                hidden_size=int(self.args.hidden_size / 4),
+                num_layers=self.args.num_layers,
+                varying_std=self.args.varying_std,
+                tanh_finish=self.args.tanh_finish,
+                log_std=self.args.log_stdev,
+            )
+        elif self.args.rnn:
             pol_net = PolNetLSTM(ob_space, ac_space, h_size=256, cell_size=256)
         elif self.args.net_version == 1:
             pol_net = PolNet(ob_space, ac_space, log_std=self.args.log_stdev)
