@@ -30,7 +30,7 @@ from machina.envs import GymEnv, C2DEnv
 from machina import logger
 
 from simple_net import PolNet, PolNetB, VNet, VNetB, PolNetLSTM, VNetLSTM
-from symmetric_net import SymmetricNet
+from symmetric_net import SymmetricNet, SymmetricValue
 
 
 import mocca_envs
@@ -228,7 +228,13 @@ class Trainer(object):
             parallel_dim=1 if self.args.rnn else 0,
         )
 
-        if self.args.rnn:
+        if self.args.mirror:
+            vf_net = SymmetricValue(
+                *self.env.unwrapped.mirror_sizes[:3],
+                hidden_size=self.args.hidden_size,
+                num_layers=self.args.num_layers,
+            )
+        elif self.args.rnn:
             vf_net = VNetLSTM(ob_space, h_size=256, cell_size=256)
         elif self.args.net_version == 1:
             vf_net = VNet(ob_space)

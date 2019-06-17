@@ -5,6 +5,8 @@ from torch.nn.parameter import Parameter
 from torch.nn import init
 from torch.nn import functional as F
 
+from simple_net import VNetB
+
 
 class SymmetricLayer(nn.Module):
     __constants__ = ["sbias", "cbias"]
@@ -63,8 +65,8 @@ class SymmetricLayer(nn.Module):
             init.kaiming_uniform_(getattr(self, wname), a=math.sqrt(5) * wmag)
 
         bound = 1 / math.sqrt(self.in_const + self.in_neg + 2 * self.in_side)
-        self.sbias.fill_(0)
-        self.cbias.fill_(0)
+        self.sbias.data.fill_(0)
+        self.cbias.data.fill_(0)
         # init.uniform_(self.sbias, -bound, bound)
         # init.uniform_(self.cbias, -bound, bound)
 
@@ -134,14 +136,11 @@ class SymmetricNet(nn.Module):
                 self.log_std_param = log_std * th.ones(action_size)
 
     def forward(self, obs):
-        # TODO: better fix than transpose?
-        obs = obs.transpose(0, -1)
-        c = obs[: self.c_in].transpose(0, -1)
-        n = obs[self.c_in : self.c_in + self.n_in].transpose(0, -1)
-        l = obs[self.c_in + self.n_in : self.c_in + self.n_in + self.s_in].transpose(
-            0, -1
-        )
-        r = obs[-self.s_in :].transpose(0, -1)
+        cs, ns, ss = self.c_in, self.n_in, self.s_in
+        c = obs.index_select(-1, th.arange(0, cs))
+        n = obs.index_select(-1, th.arange(cs, cs + ns))
+        l = obs.index_select(-1, th.arange(cs + ns, cs + ns + ss))
+        r = obs.index_select(-1, th.arange(cs + ns + ss, cs + ns + 2 * ss))
 
         for i, layer in enumerate(self.layers):
             if i != 0:
@@ -161,3 +160,28 @@ class SymmetricNet(nn.Module):
             return mean, log_std
         else:
             return mean
+
+
+class SymmetricValue(nn.Module):
+    def __init__(self, c_in, n_in, s_in, num_layers=3, hidden_size=64):
+        super().__init__()
+        self.c_in = c_in
+        self.s_in = s_in
+        self.n_in = n_in
+
+        obs_space = th.zeros([c_in + n_in + 2 * s_in])
+
+        self.net = VNetB(obs_space, hidden_size=hidden_size, num_layers=num_layers)
+
+    def forward(self, obs):
+        # TODO: better fix than transpose?
+        obs = obs.transpose(0, -1)
+        c = obs[: self.c_in].transpose(0, -1)
+        n = obs[self.c_in : self.c_in + self.n_in].transpose(0, -1)
+        l = obs[self.c_in + self.n_in : self.c_in + self.n_in + self.s_in].transpose(
+            0, -1
+        )
+        r = obs[-self.s_in :].transpose(0, -1)
+
+        return (self.net(obs) + self.net(th.cat([c, -n, r, l], -1))) / 2
+
