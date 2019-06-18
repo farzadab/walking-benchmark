@@ -174,14 +174,11 @@ class SymmetricValue(nn.Module):
         self.net = VNetB(obs_space, hidden_size=hidden_size, num_layers=num_layers)
 
     def forward(self, obs):
-        # TODO: better fix than transpose?
-        obs = obs.transpose(0, -1)
-        c = obs[: self.c_in].transpose(0, -1)
-        n = obs[self.c_in : self.c_in + self.n_in].transpose(0, -1)
-        l = obs[self.c_in + self.n_in : self.c_in + self.n_in + self.s_in].transpose(
-            0, -1
-        )
-        r = obs[-self.s_in :].transpose(0, -1)
+        cs, ns, ss = self.c_in, self.n_in, self.s_in
+        c = obs.index_select(-1, th.arange(0, cs))
+        n = obs.index_select(-1, th.arange(cs, cs + ns))
+        l = obs.index_select(-1, th.arange(cs + ns, cs + ns + ss))
+        r = obs.index_select(-1, th.arange(cs + ns + ss, cs + ns + 2 * ss))
 
         return (self.net(obs) + self.net(th.cat([c, -n, r, l], -1))) / 2
 
