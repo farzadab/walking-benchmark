@@ -30,7 +30,7 @@ from machina.envs import GymEnv, C2DEnv
 from machina import logger
 
 from simple_net import PolNet, PolNetB, VNet, VNetB, PolNetLSTM, VNetLSTM
-from symmetric_net import SymmetricNet, SymmetricValue
+from symmetric_net import SymmetricNet, SymmetricValue, SymmetricStats
 
 
 import mocca_envs
@@ -119,6 +119,13 @@ class Trainer(object):
 
         if self.env is None:
             self.env = NormalizedEnv(env)
+            if self.args.mirror:
+                if hasattr(env.unwrapped, "mirror_sizes"):
+                    self.env.stats = SymmetricStats(
+                        *env.unwrapped.mirror_sizes[:3], max_obs=4000
+                    )
+                else:
+                    self.args.mirror = False
         else:
             # don't want to override the normalization
             self.env.replace_wrapped_env(env)

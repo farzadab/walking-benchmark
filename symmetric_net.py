@@ -6,6 +6,7 @@ from torch.nn import init
 from torch.nn import functional as F
 
 from simple_net import VNetB
+from utils.normalization import Stats
 
 
 class SymmetricLayer(nn.Module):
@@ -135,6 +136,10 @@ class SymmetricNet(nn.Module):
             else:
                 self.log_std_param = log_std * th.ones(action_size)
 
+    @property
+    def input_size(self):
+        return self.c_in + self.n_in + 2 * self.s_in
+
     def forward(self, obs):
         cs, ns, ss = self.c_in, self.n_in, self.s_in
         c = obs.index_select(-1, th.arange(0, cs))
@@ -160,6 +165,35 @@ class SymmetricNet(nn.Module):
             return mean, log_std
         else:
             return mean
+
+
+class SymmetricStats(Stats):
+    def __init__(self, c_in, n_in, s_in, *args, **kwargs):
+        self.zeros_inds = th.arange(c_in, c_in + n_in)
+        self.shared_inds = th.stack(
+            [
+                th.arange(c_in + n_in, c_in + n_in + s_in),
+                th.arange(c_in + n_in + s_in, c_in + n_in + 2 * s_in),
+            ]
+        )
+
+    def observe(self, obs):
+        """
+        @brief update observation mean & stdev
+        # @param obs: the observation. assuming NxS where N is the batch-size and S is the input-size
+        @param obs: the observation (can be 1D or 2D in which case the first dimension is the batch-size)
+        """
+        if self.n > self.max_obs:
+            return
+        super().observe(obs)
+        self.mean[self.zeros_inds] = 0
+
+        shared_mean = self.mean[self.shared_inds].mean(0)
+        shared_std = self.std[self.shared_inds].max(0)[0]
+
+        for inds in self.shared_inds:
+            self.mean[inds] = shared_mean
+            self.std[inds] = shared_std
 
 
 class SymmetricValue(nn.Module):
