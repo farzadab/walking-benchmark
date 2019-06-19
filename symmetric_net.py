@@ -169,6 +169,8 @@ class SymmetricNet(nn.Module):
 
 class SymmetricStats(Stats):
     def __init__(self, c_in, n_in, s_in, *args, **kwargs):
+        input_size = c_in + n_in + 2 * s_in
+        super().__init__(input_size, *args, **kwargs)
         self.zeros_inds = th.arange(c_in, c_in + n_in)
         self.shared_inds = th.stack(
             [
