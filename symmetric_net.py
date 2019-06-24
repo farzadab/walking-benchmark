@@ -43,13 +43,20 @@ class SymmetricLayer(nn.Module):
     def forward(self, c, n, l, r):
         c2s = F.linear(c, self.c2s, self.sbias)
         n2s = F.linear(n, self.n2s)
-        s2c = F.linear((l + r) / 2, self.s2c, self.cbias)
-        s2n = F.linear(l - r, self.s2n)
+
+        if self.in_side > 0:
+            s2c = F.linear((l + r) / 2, self.s2c, self.cbias)
+            s2n = F.linear(l - r, self.s2n)
+            s2l = F.linear(l, self.s1s) + F.linear(r, self.s2s)
+            s2r = F.linear(r, self.s1s) + F.linear(l, self.s2s)
+        else:
+            s2c = s2n = s2l = s2r = 0
+
         return (
             s2c + F.linear(c, self.c2c),  # constant part
             s2n + F.linear(n, self.n2n),  # negative part
-            c2s + n2s + F.linear(l, self.s1s) + F.linear(r, self.s2s),  # left
-            c2s - n2s + F.linear(r, self.s1s) + F.linear(l, self.s2s),  # right
+            c2s + n2s + s2l,  # left
+            c2s - n2s + s2r,  # right
         )
 
     #         self.in_features = in_features
@@ -63,9 +70,7 @@ class SymmetricLayer(nn.Module):
 
     def reset_parameters(self, wmag):
         for wname in self.__weights__:
-            w = getattr(self, wname)
-            if w.shape[0] > 0 and w.shape[1] > 0:
-                init.kaiming_uniform_(w, a=math.sqrt(5) * wmag)
+            init.xavier_uniform_(getattr(self, wname), gain=wmag)
 
         bound = 1 / math.sqrt(self.in_const + self.in_neg + 2 * self.in_side)
         self.sbias.data.fill_(0)
@@ -125,7 +130,7 @@ class SymmetricNet(nn.Module):
             self.add_module("layer%d" % i, self.layers[i])
             last_cin, last_nin, last_sin = hidden_size, hidden_size, hidden_size
         self.layers.append(
-            SymmetricLayer(last_cin, last_nin, last_sin, c_out, n_out, s_out, wmag=3e-3)
+            SymmetricLayer(last_cin, last_nin, last_sin, c_out, n_out, s_out, wmag=0.01)
         )
         self.add_module("final", self.layers[-1])
 
@@ -158,7 +163,16 @@ class SymmetricNet(nn.Module):
 
             c, n, l, r = layer(c, n, l, r)
 
-        mean = th.cat([c, n, l, r], -1)
+        empty = th.FloatTensor(obs.shape[:-1] + (0,))
+        mean = th.cat(
+            [
+                c if c.shape[-1] > 0 else empty,
+                n if n.shape[-1] > 0 else empty,
+                l if l.shape[-1] > 0 else empty,
+                r if r.shape[-1] > 0 else empty,
+            ],
+            -1,
+        )
         if self.tanh_finish:
             mean = th.tanh(mean)
 
@@ -174,12 +188,16 @@ class SymmetricStats(Stats):
         input_size = c_in + n_in + 2 * s_in
         super().__init__(input_size, *args, **kwargs)
 
-        self.zeros_inds = None if n_in == 0 else th.arange(c_in, c_in + n_in)
-        self.shared_inds = None if s_in == 0 else th.stack(
-            [
-                th.arange(c_in + n_in, c_in + n_in + s_in),
-                th.arange(c_in + n_in + s_in, c_in + n_in + 2 * s_in),
-            ]
+        self.zeros_inds = th.arange(c_in, c_in + n_in)
+        self.shared_inds = (
+            None
+            if s_in == 0
+            else th.stack(
+                [
+                    th.arange(c_in + n_in, c_in + n_in + s_in),
+                    th.arange(c_in + n_in + s_in, c_in + n_in + 2 * s_in),
+                ]
+            )
         )
 
     def observe(self, obs):
@@ -193,9 +211,8 @@ class SymmetricStats(Stats):
         super().observe(obs)
         self.mean[self.zeros_inds] = 0
 
-        shared_mean = self.mean[self.shared_inds].mean(0)
-
         if self.shared_inds is not None:
+            shared_mean = self.mean[self.shared_inds].mean(0)
             shared_std = self.std[self.shared_inds].max(0)[0]
 
             for inds in self.shared_inds:
