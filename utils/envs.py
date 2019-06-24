@@ -91,14 +91,19 @@ class MirrorEnv(gym.Wrapper):
             mirror_indices["right_act_inds"]
         )
         env.unwrapped.mirror_sizes = [
+            # obs (in)
             len(mirror_indices["com_obs_inds"]),  # c_in
             len(mirror_indices["neg_obs_inds"]),  # n_in
             len(mirror_indices["left_obs_inds"]),  # s_in
-            #
+            # act (out)
             len(mirror_indices["com_act_inds"]),  # c_out
             0,  # n_out
             len(mirror_indices["left_act_inds"]),  # s_out
         ]
+        assert (
+            np.array(env.unwrapped.mirror_sizes)[[0, 1, 2, 2]].sum()
+            == env.unwrapped.observation_space.shape[0]
+        )
 
     def reset(self, **kwargs):
         return self.fix_obs(self.env.reset(**kwargs))

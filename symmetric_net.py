@@ -63,7 +63,9 @@ class SymmetricLayer(nn.Module):
 
     def reset_parameters(self, wmag):
         for wname in self.__weights__:
-            init.kaiming_uniform_(getattr(self, wname), a=math.sqrt(5) * wmag)
+            w = getattr(self, wname)
+            if w.shape[0] > 0 and w.shape[1] > 0:
+                init.kaiming_uniform_(w, a=math.sqrt(5) * wmag)
 
         bound = 1 / math.sqrt(self.in_const + self.in_neg + 2 * self.in_side)
         self.sbias.data.fill_(0)
@@ -171,8 +173,9 @@ class SymmetricStats(Stats):
     def __init__(self, c_in, n_in, s_in, *args, **kwargs):
         input_size = c_in + n_in + 2 * s_in
         super().__init__(input_size, *args, **kwargs)
-        self.zeros_inds = th.arange(c_in, c_in + n_in)
-        self.shared_inds = th.stack(
+
+        self.zeros_inds = None if n_in == 0 else th.arange(c_in, c_in + n_in)
+        self.shared_inds = None if s_in == 0 else th.stack(
             [
                 th.arange(c_in + n_in, c_in + n_in + s_in),
                 th.arange(c_in + n_in + s_in, c_in + n_in + 2 * s_in),
@@ -191,11 +194,13 @@ class SymmetricStats(Stats):
         self.mean[self.zeros_inds] = 0
 
         shared_mean = self.mean[self.shared_inds].mean(0)
-        shared_std = self.std[self.shared_inds].max(0)[0]
 
-        for inds in self.shared_inds:
-            self.mean[inds] = shared_mean
-            self.std[inds] = shared_std
+        if self.shared_inds is not None:
+            shared_std = self.std[self.shared_inds].max(0)[0]
+
+            for inds in self.shared_inds:
+                self.mean[inds] = shared_mean
+                self.std[inds] = shared_std
 
 
 class SymmetricValue(nn.Module):
