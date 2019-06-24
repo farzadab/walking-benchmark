@@ -23,3 +23,9 @@ register(
     entry_point="envs.walker:StateEarlyStopWalker",
     max_episode_steps=1000,
 )
+
+register(
+    id="MirrorWalker2D-v0",
+    entry_point="envs.mirror:MirrorWalker2D",
+    max_episode_steps=1000,
+)

@@ -1,5 +1,7 @@
 import torch as th
+import numpy as np
 import copy
+import gym
 import gym.envs
 
 
@@ -57,3 +59,62 @@ def get_mirror_function(
         return ctraj
 
     return mirror_function
+
+
+class MirrorEnv(gym.Wrapper):
+    """
+        :params mirror_indices: indices used for mirroring the environment
+            example:
+            mirror_indices = {
+                #### observation:
+                "com_obs_inds": [],          # common indices (in the observation)
+                "left_obs_inds": [],         # indices of the right side (in the observation)
+                "right_obs_inds": [],        # indices of the left side (in the observation)
+                "neg_obs_inds": [],          # common indices that should be negated (in the observation)
+                "sideneg_obs_inds": [],      # side indices that should be negated (in the observation)
+
+                #### action:
+                "com_act_inds": [],          # common indices of the action
+                "left_act_inds": [],         # indices of the left side in the action
+                "right_act_inds": [],        # indices of the right side in the action
+                "sideneg_act_inds": [],      # indices of the side that should be negated
+            }
+        """
+
+    def __init__(self, env, mirror_indices):
+        super().__init__(env)
+        env.unwrapped.mirror_indices = mirror_indices
+        assert len(mirror_indices["left_obs_inds"]) == len(
+            mirror_indices["right_obs_inds"]
+        )
+        assert len(mirror_indices["left_act_inds"]) == len(
+            mirror_indices["right_act_inds"]
+        )
+        env.unwrapped.mirror_sizes = [
+            len(mirror_indices["com_obs_inds"]),  # c_in
+            len(mirror_indices["neg_obs_inds"]),  # n_in
+            len(mirror_indices["left_obs_inds"]),  # s_in
+            #
+            len(mirror_indices["com_act_inds"]),  # c_out
+            0,  # n_out
+            len(mirror_indices["left_act_inds"]),  # s_out
+        ]
+
+    def reset(self, **kwargs):
+        return self.fix_obs(self.env.reset(**kwargs))
+
+    def step(self, action):
+        action[self.unwrapped.mirror_indices["sideneg_act_inds"]] *= -1
+        obs, reward, done, info = self.env.step(action)
+        return self.fix_obs(obs), reward, done, info
+
+    def fix_obs(self, obs):
+        obs[self.unwrapped.mirror_indices["sideneg_obs_inds"]] *= -1
+        return np.concatenate(
+            [
+                obs[self.unwrapped.mirror_indices["com_obs_inds"]],
+                obs[self.unwrapped.mirror_indices["neg_obs_inds"]],
+                obs[self.unwrapped.mirror_indices["left_obs_inds"]],
+                obs[self.unwrapped.mirror_indices["right_obs_inds"]],
+            ]
+        )
