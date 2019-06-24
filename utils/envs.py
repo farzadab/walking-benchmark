@@ -83,43 +83,58 @@ class MirrorEnv(gym.Wrapper):
 
     def __init__(self, env, mirror_indices):
         super().__init__(env)
-        env.unwrapped.mirror_indices = mirror_indices
+        self.mirror_indices = mirror_indices
         assert len(mirror_indices["left_obs_inds"]) == len(
             mirror_indices["right_obs_inds"]
         )
         assert len(mirror_indices["left_act_inds"]) == len(
             mirror_indices["right_act_inds"]
         )
+        # *_in
+        ci = len(mirror_indices["com_obs_inds"])
+        ni = len(mirror_indices["neg_obs_inds"])
+        si = len(mirror_indices["left_obs_inds"])
+        # *_out
+        co = len(mirror_indices["com_act_inds"])
+        so = len(mirror_indices["left_act_inds"])
+
+        # make sure the sizes match the observation space
+        assert (ci + ni + 2 * si) == env.unwrapped.observation_space.shape[0]
+
         env.unwrapped.mirror_sizes = [
             # obs (in)
-            len(mirror_indices["com_obs_inds"]),  # c_in
-            len(mirror_indices["neg_obs_inds"]),  # n_in
-            len(mirror_indices["left_obs_inds"]),  # s_in
+            ci,  # c_in
+            ni,  # n_in
+            si,  # s_in
             # act (out)
-            len(mirror_indices["com_act_inds"]),  # c_out
+            co,  # c_out
             0,  # n_out
-            len(mirror_indices["left_act_inds"]),  # s_out
+            so,  # s_out
         ]
-        assert (
-            np.array(env.unwrapped.mirror_sizes)[[0, 1, 2, 2]].sum()
-            == env.unwrapped.observation_space.shape[0]
-        )
+        env.unwrapped.mirror_indices = {
+            "left_obs_inds": list(range(ci + ni, ci + ni + si)),
+            "right_obs_inds": list(range(ci + ni + si, ci + ni + 2 * si)),
+            "left_act_inds": list(range(co, co + so)),
+            "right_act_inds": list(range(co + so, co + 2 * so)),
+            "neg_obs_inds": list(range(ci, ci + ni)),
+            "neg_act_inds": [],
+        }
 
     def reset(self, **kwargs):
         return self.fix_obs(self.env.reset(**kwargs))
 
     def step(self, action):
-        action[self.unwrapped.mirror_indices["sideneg_act_inds"]] *= -1
+        action[self.mirror_indices["sideneg_act_inds"]] *= -1
         obs, reward, done, info = self.env.step(action)
         return self.fix_obs(obs), reward, done, info
 
     def fix_obs(self, obs):
-        obs[self.unwrapped.mirror_indices["sideneg_obs_inds"]] *= -1
+        obs[self.mirror_indices["sideneg_obs_inds"]] *= -1
         return np.concatenate(
             [
-                obs[self.unwrapped.mirror_indices["com_obs_inds"]],
-                obs[self.unwrapped.mirror_indices["neg_obs_inds"]],
-                obs[self.unwrapped.mirror_indices["left_obs_inds"]],
-                obs[self.unwrapped.mirror_indices["right_obs_inds"]],
+                obs[self.mirror_indices["com_obs_inds"]],
+                obs[self.mirror_indices["neg_obs_inds"]],
+                obs[self.mirror_indices["left_obs_inds"]],
+                obs[self.mirror_indices["right_obs_inds"]],
             ]
         )
