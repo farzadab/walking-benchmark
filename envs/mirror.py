@@ -51,10 +51,11 @@ def MirrorHumanoid():
             "right_obs_inds": list(range(14, 22)) + list(range(30, 36)) + [42],
             "sideneg_obs_inds": list(range(30, 34)),
             #### action:
-            "com_act_inds": [0, 1, 2],
+            "com_act_inds": [1],
+            "neg_act_inds": [0, 2],
             "left_act_inds": [7, 8, 9, 10, 14, 15, 16],
             "right_act_inds": [3, 4, 5, 6, 11, 12, 13],
-            "sideneg_act_inds": [0, 2, 11, 12],
+            "sideneg_act_inds": [11, 12],
         },
     )
 

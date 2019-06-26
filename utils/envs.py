@@ -75,6 +75,7 @@ class MirrorEnv(gym.Wrapper):
 
                 #### action:
                 "com_act_inds": [],          # common indices of the action
+                "neg_act_inds": [],          # common indices of the action that should be negated when mirrored
                 "left_act_inds": [],         # indices of the left side in the action
                 "right_act_inds": [],        # indices of the right side in the action
                 "sideneg_act_inds": [],      # indices of the side that should be negated
@@ -82,7 +83,11 @@ class MirrorEnv(gym.Wrapper):
         """
 
     def __init__(self, env, mirror_indices):
+        if "neg_act_inds" not in mirror_indices:
+            mirror_indices["neg_act_inds"] = []
+
         super().__init__(env)
+
         self.mirror_indices = mirror_indices
         assert len(mirror_indices["left_obs_inds"]) == len(
             mirror_indices["right_obs_inds"]
@@ -96,10 +101,12 @@ class MirrorEnv(gym.Wrapper):
         si = len(mirror_indices["left_obs_inds"])
         # *_out
         co = len(mirror_indices["com_act_inds"])
+        no = len(mirror_indices["neg_act_inds"])
         so = len(mirror_indices["left_act_inds"])
 
         # make sure the sizes match the observation space
         assert (ci + ni + 2 * si) == env.unwrapped.observation_space.shape[0]
+        assert (co + no + 2 * so) == env.unwrapped.action_space.shape[0]
 
         env.unwrapped.mirror_sizes = [
             # obs (in)
@@ -108,7 +115,7 @@ class MirrorEnv(gym.Wrapper):
             si,  # s_in
             # act (out)
             co,  # c_out
-            0,  # n_out
+            no,  # n_out
             so,  # s_out
         ]
         env.unwrapped.mirror_indices = {
@@ -119,11 +126,21 @@ class MirrorEnv(gym.Wrapper):
             "neg_obs_inds": list(range(ci, ci + ni)),
             "neg_act_inds": [],
         }
+        self.co = co
+        self.no = no
+        self.so = so
 
     def reset(self, **kwargs):
         return self.fix_obs(self.env.reset(**kwargs))
 
-    def step(self, action):
+    def step(self, act_):
+        action = 0 * act_
+
+        action[self.mirror_indices["com_act_inds"]] = act_[: self.co]
+        action[self.mirror_indices["neg_act_inds"]] = act_[self.co : self.co + self.no]
+        action[self.mirror_indices["left_act_inds"]] = act_[-2 * self.so : -self.so]
+        action[self.mirror_indices["right_act_inds"]] = act_[-self.so :]
+
         action[self.mirror_indices["sideneg_act_inds"]] *= -1
         obs, reward, done, info = self.env.step(action)
         return self.fix_obs(obs), reward, done, info
