@@ -71,9 +71,10 @@ def MirrorPong():
             "right_obs_inds": [],
             "sideneg_obs_inds": [],
             #### action:
-            "com_act_inds": [0, 1],
+            "com_act_inds": [0],
+            "neg_act_inds": [1],
             "left_act_inds": [],
             "right_act_inds": [],
-            "sideneg_act_inds": [1],
+            "sideneg_act_inds": [],
         },
     )
