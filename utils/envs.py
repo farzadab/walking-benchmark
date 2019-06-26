@@ -126,20 +126,20 @@ class MirrorEnv(gym.Wrapper):
             "neg_obs_inds": list(range(ci, ci + ni)),
             "neg_act_inds": [],
         }
-        self.co = co
-        self.no = no
-        self.so = so
+        self.reverse_act_inds = (
+            mirror_indices["com_act_inds"]
+            + mirror_indices["neg_act_inds"]
+            + mirror_indices["left_act_inds"]
+            + mirror_indices["right_act_inds"]
+        )
 
     def reset(self, **kwargs):
         return self.fix_obs(self.env.reset(**kwargs))
 
     def step(self, act_):
-        action = 0 * act_
 
-        action[self.mirror_indices["com_act_inds"]] = act_[: self.co]
-        action[self.mirror_indices["neg_act_inds"]] = act_[self.co : self.co + self.no]
-        action[self.mirror_indices["left_act_inds"]] = act_[-2 * self.so : -self.so]
-        action[self.mirror_indices["right_act_inds"]] = act_[-self.so :]
+        action = 0 * act_
+        action[self.reverse_act_inds] = act_
 
         action[self.mirror_indices["sideneg_act_inds"]] *= -1
         obs, reward, done, info = self.env.step(action)
