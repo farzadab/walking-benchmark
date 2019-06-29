@@ -14,7 +14,7 @@ from colorama import Fore, Style
 
 from utils.argparser import ArgsFromFile
 from utils.logs import LogMaster
-from utils.envs import auto_tune_env, get_mirror_function
+from utils.envs import auto_tune_env, get_mirror_function, SymEnv
 from utils.normalization import NormalizedEnv
 from utils import infrange
 
@@ -31,12 +31,16 @@ from machina import logger
 
 from simple_net import PolNet, PolNetB, VNet, VNetB, PolNetLSTM, VNetLSTM
 from symmetric_net import SymmetricNet, SymmetricValue, SymmetricStats
+from sym_net import SymNet, SymVNet
 
 
 import mocca_envs
 import pybullet_envs
 import roboschool
 import envs
+
+
+# TODO: this mirroring is becoming a pain point, gotta refactor
 
 
 class Trainer(object):
@@ -47,7 +51,7 @@ class Trainer(object):
         "plot": True,
         "evaluate": False,
         "eval_epis": 50,
-        "mirror": True,
+        "mirror": False,
     }
 
     def __init__(self, args=None):
@@ -60,6 +64,11 @@ class Trainer(object):
         if args is None:
             args = ArgsFromFile(self.default_args)
         self.args = args
+
+        assert args.mirror in [False, "old", "new", "tuple"]
+
+        if args.mirror == "old":
+            args.mirror = True
 
         self.env_kwargs = copy.deepcopy(getattr(self.args, "env_kwargs", {}))
 
@@ -119,13 +128,15 @@ class Trainer(object):
 
         if self.env is None:
             self.env = NormalizedEnv(env)
-            if self.args.mirror:
+            if self.args.mirror is True:
                 if hasattr(env.unwrapped, "mirror_sizes"):
                     self.env.stats = SymmetricStats(
                         *env.unwrapped.mirror_sizes[:3], max_obs=4000
                     )
                 else:
                     self.args.mirror = False
+            elif self.args.mirror == "new":
+                self.env = SymEnv(self.env)
         else:
             # don't want to override the normalization
             self.env.replace_wrapped_env(env)
@@ -193,7 +204,8 @@ class Trainer(object):
         ob_space = self.env.observation_space
         ac_space = self.env.action_space
 
-        if self.args.mirror:
+        if self.args.mirror is True:
+            print("Initiating a symmetric network")
             pol_net = SymmetricNet(
                 *self.env.unwrapped.mirror_sizes,
                 hidden_size=int(self.args.hidden_size / 4),
@@ -217,6 +229,19 @@ class Trainer(object):
                 log_std=self.args.log_stdev,
             )
 
+        if self.args.mirror == "new":
+            print("Initiating a new symmetric network")
+            # TODO: in this case the action_space for the previous pol_net is incorrect, but it isn't easy to fix ...
+            # we can use this for now which just ignores some of the final indices
+            pol_net = SymNet(
+                pol_net,
+                ob_space.shape[0],
+                *self.env.unwrapped.sym_act_inds,
+                varying_std=self.args.varying_std,
+                log_std=self.args.log_stdev,
+                deterministic=False,
+            )
+
         if isinstance(ac_space, gym.spaces.Box):
             pol_class = GaussianPol
         elif isinstance(ac_space, gym.spaces.Discrete):
@@ -235,7 +260,7 @@ class Trainer(object):
             parallel_dim=1 if self.args.rnn else 0,
         )
 
-        if self.args.mirror:
+        if self.args.mirror is True:
             vf_net = SymmetricValue(
                 *self.env.unwrapped.mirror_sizes[:3],
                 hidden_size=self.args.hidden_size,
@@ -251,6 +276,10 @@ class Trainer(object):
                 hidden_size=self.args.hidden_size,
                 num_layers=self.args.num_layers,
             )
+
+        if self.args.mirror == "new":
+            print("Initiating a new symmetric value network")
+            vf_net = SymVNet(vf_net, ob_space.shape[0])
 
         vf = DeterministicSVfunc(
             ob_space,

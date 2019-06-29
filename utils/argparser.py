@@ -120,6 +120,7 @@ _DEFAULT_ARGS = {
     "decay_gamma": {"type": float},
     "gae_lambda": {"type": float},
     "use_peb": {"type": str2bool},
+    "mirror": {"type": str},
     "mirror_tuples": {"type": str2bool},
     # mixed pg
     "epoch_per_iter": {
