@@ -70,6 +70,8 @@ class Trainer(object):
         if args.mirror == "old":
             args.mirror = True
 
+        args.mirror_tuples = args.mirror == "tuple"
+
         self.env_kwargs = copy.deepcopy(getattr(self.args, "env_kwargs", {}))
 
         device_name = "cpu" if args.cuda < 0 else "cuda:{}".format(args.cuda)
