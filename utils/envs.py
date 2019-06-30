@@ -121,12 +121,14 @@ class MirrorEnv(gym.Wrapper):
         ]
         env.unwrapped.mirror_indices = {
             "com_obs_inds": list(range(0, ci)),
+            "neg_obs_inds": list(range(ci, ci + ni)),
             "left_obs_inds": list(range(ci + ni, ci + ni + si)),
             "right_obs_inds": list(range(ci + ni + si, ci + ni + 2 * si)),
-            "left_act_inds": list(range(co, co + so)),
-            "right_act_inds": list(range(co + so, co + 2 * so)),
-            "neg_obs_inds": list(range(ci, ci + ni)),
-            "neg_act_inds": [],
+            #
+            "com_act_inds": list(range(0, co)),
+            "neg_act_inds": list(range(co, co + no)),
+            "left_act_inds": list(range(co + no, co + no +so)),
+            "right_act_inds": list(range(co + no + so, co + no + 2 * so)),
         }
         self.reverse_act_inds = (
             mirror_indices["com_act_inds"]
@@ -184,7 +186,6 @@ class SymEnv(gym.Wrapper):
 
         ** Point of difference with MirrorEnv:
           - both neg obs indices are treated the same here
-          - act indices are mostly ignored except the "sideneg_act_inds"
     """
 
     def __init__(self, env):
@@ -206,7 +207,7 @@ class SymEnv(gym.Wrapper):
         no = len(minds.get("neg_act_inds", []))
         so = len(minds.get("left_act_inds", []))
 
-        print(ci, ni, si)
+        print(ci, ni, si, co, no, so)
         # make sure the sizes match the observation space
         assert isinstance(env.observation_space, gym.spaces.Box)
         assert (ci + ni + 2 * si) == env.observation_space.shape[0]
@@ -223,12 +224,8 @@ class SymEnv(gym.Wrapper):
         self.neg_obs_inds = minds.get("sideneg_obs_inds", []) + minds.get(
             "neg_obs_inds", []
         )
-        self.lr_obs_inds = np.concatenate(
-            [minds["left_obs_inds"], minds["right_obs_inds"]]
-        )
-        self.rl_obs_inds = np.concatenate(
-            [minds["right_obs_inds"], minds["left_obs_inds"]]
-        )
+        self.lr_obs_inds = minds["left_obs_inds"] + minds["right_obs_inds"]
+        self.rl_obs_inds = minds["right_obs_inds"] + minds["left_obs_inds"]
         # action indices
         self.sideneg_act_inds = minds.get("sideneg_act_inds", [])
         self.reverse_act_inds = (
