@@ -84,3 +84,8 @@ def MirrorCassieOSU():
     env = gym.make("mocca_envs:CassieOSUEnv-v0")
     return MirrorEnv(env=env, mirror_indices=env.unwrapped.mirror_indices)
 
+
+def MirrorCassieOSU2D():
+    env = gym.make("mocca_envs:CassieOSU2DEnv-v0")
+    return MirrorEnv(env=env, mirror_indices=env.unwrapped.mirror_indices)
+

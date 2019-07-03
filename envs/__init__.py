@@ -50,3 +50,10 @@ register(
     entry_point="envs.mirror:MirrorCassieOSU",
     max_episode_steps=1000,
 )
+
+register(
+    #
+    id="MirrorCassieOSU2D-v0",
+    entry_point="envs.mirror:MirrorCassieOSU2D",
+    max_episode_steps=1000,
+)
