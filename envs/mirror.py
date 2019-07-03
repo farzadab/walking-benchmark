@@ -78,3 +78,9 @@ def MirrorPong():
             "sideneg_act_inds": [],
         },
     )
+
+
+def MirrorCassieOSU():
+    env = gym.make("mocca_envs:CassieOSUEnv-v0")
+    return MirrorEnv(env=env, mirror_indices=env.unwrapped.mirror_indices)
+

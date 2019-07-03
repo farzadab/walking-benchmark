@@ -127,7 +127,7 @@ class MirrorEnv(gym.Wrapper):
             #
             "com_act_inds": list(range(0, co)),
             "neg_act_inds": list(range(co, co + no)),
-            "left_act_inds": list(range(co + no, co + no +so)),
+            "left_act_inds": list(range(co + no, co + no + so)),
             "right_act_inds": list(range(co + no + so, co + no + 2 * so)),
         }
         self.reverse_act_inds = (
@@ -250,6 +250,10 @@ class SymEnv(gym.Wrapper):
         obs_m[self.neg_obs_inds] *= -1
         obs_m[self.lr_obs_inds] = obs_m[self.rl_obs_inds]
         return np.concatenate([obs, obs_m])
+
+    def render(self, *args, **kwargs):
+        # print(args, kwargs)
+        self.env.render(*args, **kwargs)
 
     def replace_wrapped_env(self, env):
         # TODO: find a fix not to do this ...

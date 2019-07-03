@@ -43,3 +43,10 @@ register(
     entry_point="envs.mirror:MirrorHumanoid",
     max_episode_steps=1000,
 )
+
+register(
+    #
+    id="MirrorCassieOSU-v0",
+    entry_point="envs.mirror:MirrorCassieOSU",
+    max_episode_steps=1000,
+)
